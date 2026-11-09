@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="500" viewBox="0 0 1024 500">
+  <rect width="1024" height="500" fill="#173d37"/>
+  <g transform="translate(110,110) scale(0.546875)">
+    <polygon points="256,0 512,256 256,512 0,256" fill="#d5e9a7"/>
+    <polyline points="128,258 257,385 384,258" fill="none" stroke="#9cbd7c" stroke-width="17"/>
+  </g>
+  <text x="440" y="235" font-family="Helvetica, Arial, sans-serif" font-size="64" font-weight="700" fill="#ffffff">HNC Revision</text>
+  <text x="442" y="295" font-family="Helvetica, Arial, sans-serif" font-size="30" fill="#d5e9a7">Cyber Security flashcards, quizzes</text>
+  <text x="442" y="335" font-family="Helvetica, Arial, sans-serif" font-size="30" fill="#d5e9a7">and subnetting practice</text>
+</svg>

@@ -1,0 +1,6 @@
+RevisionCore/.build/
+RevisionCore/.swiftpm/
+xcuserdata/
+*.xcuserstate
+DerivedData/
+build/

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Themed-icon layer: the diamond with the chevron cut out (even-odd fill). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="512"
+    android:viewportHeight="512">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:fillType="evenOdd"
+        android:pathData="M256,149 L363,256 L256,363 L149,256 Z M205.45,254.5 L257,305.05 L307.53,254.53 L312.47,259.47 L257,314.95 L200.55,259.5 Z" />
+</vector>

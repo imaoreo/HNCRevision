@@ -1,0 +1,70 @@
+name: HNCRevision
+options:
+  bundleIdPrefix: net.estopia
+  deploymentTarget:
+    iOS: "18.0"
+  createIntermediateGroups: true
+  groupSortPosition: top
+
+packages:
+  RevisionCore:
+    path: RevisionCore
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    ENABLE_USER_SCRIPT_SANDBOXING: YES
+    GENERATE_INFOPLIST_FILE: YES
+    # Simulator builds sign ad-hoc so the app loads without a developer account;
+    # device builds use the team's automatic signing.
+    CODE_SIGN_IDENTITY[sdk=iphonesimulator*]: "-"
+    CODE_SIGN_IDENTITY[sdk=iphoneos*]: "Apple Development"
+    CODE_SIGN_STYLE: Automatic
+    DEVELOPMENT_TEAM: LQCQTAV3UW
+    CODE_SIGNING_REQUIRED: YES
+    CODE_SIGNING_ALLOWED: YES
+
+targets:
+  HNCRevision:
+    type: application
+    platform: iOS
+    sources:
+      - path: HNCRevision
+      # The site's data scripts, shared with the Android app (refresh with shared/update-data.sh).
+      - path: ../shared/data/cards.js
+        buildPhase: resources
+        group: BundledData
+      - path: ../shared/data/quiz.js
+        buildPhase: resources
+        group: BundledData
+      - path: ../shared/data/vlsm.js
+        buildPhase: resources
+        group: BundledData
+    dependencies:
+      - package: RevisionCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: net.estopia.hncrevision
+        PRODUCT_NAME: HNCRevision
+        MARKETING_VERSION: "1.0.0"
+        CURRENT_PROJECT_VERSION: "1"
+        TARGETED_DEVICE_FAMILY: "1,2"
+        ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
+        INFOPLIST_KEY_CFBundleDisplayName: HNC Revision
+        INFOPLIST_KEY_LSApplicationCategoryType: public.app-category.education
+        INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: NO
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
+        INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
+        INFOPLIST_KEY_UIUserInterfaceStyle: Automatic
+
+schemes:
+  HNCRevision:
+    build:
+      targets:
+        HNCRevision: all
+    run:
+      config: Debug
+    archive:
+      config: Release
