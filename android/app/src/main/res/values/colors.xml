@@ -2,4 +2,11 @@
 <resources>
     <color name="paper">#F5F5EF</color>
     <color name="icon_background">#173D37</color>
+    <!-- Home screen widget (dark versions in values-night). -->
+    <color name="widget_background">#FFFFFF</color>
+    <color name="widget_border">#DCE2D9</color>
+    <color name="widget_ink">#173D37</color>
+    <color name="widget_muted">#5E6D66</color>
+    <color name="widget_pill">#D5E9A7</color>
+    <color name="widget_pill_text">#173D37</color>
 </resources>

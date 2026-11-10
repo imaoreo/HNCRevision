@@ -98,3 +98,63 @@ UserDefaults / SharedPreferences (or a small JSON file):
 ## Look
 Match the site: ink `#173d37` (primary, text), paper `#f5f5ef` (background), line `#dce2d9`, muted `#6d7c75`, accent `#d5e9a7` (soft buttons, Confident), white cards with 20 pt corner radius and a hairline border. Primary buttons are ink with white text. Correct = green tint, wrong = red tint. Support dark mode with matching dark tokens (background ~`#0f1f1c`, cards ~`#173d37`-ish surface, text ~`#eef2ea`, accent kept). Respect Dynamic Type / font scaling, VoiceOver / TalkBack labels, minimum 44 pt / 48 dp touch targets. Phone and tablet layouts should both work.
 Icon: `shared/icon/icon-1024.png` (iOS) and `shared/icon/foreground.svg` on `#173d37` (Android adaptive icon; convert to a vector drawable).
+
+---
+
+# Version 1.1 (1.1.0, build 2 / versionCode 2)
+
+Seven additions. Everything new is saved on the device with the existing lenient pattern (a field that fails to load falls back to its default), so 1.0 users keep their ratings, quiz results and decks. All new logic lives in the testable layer (iOS `RevisionCore`, Android `logic/`), and dates use the device's local calendar day. Inject "now" and the random source so tests are deterministic.
+
+## 1. Spaced repetition (Leitner boxes)
+- Saved per card: `schedule[cardId] = {box: Int, due: local date (yyyy-MM-dd)}`.
+- When a card is rated (Study, Rated, Due, Starred, New modes): **Confident** → `box = min(box + 1, 4)` (unscheduled cards start from box 0, so the first Confident gives box 1); **Revisit** → `box = 0`. Then `due = today + interval(box)` with intervals box 0 = 1 day, 1 = 3, 2 = 7, 3 = 14, 4 = 30.
+- The existing `progress` rating (known / review) is still written exactly as before.
+- Migration (first launch with no `schedule` saved): every 1.0 Revisit card → box 0, due today; every Confident card → box 1, due today + 3.
+- **Due** card mode, next to Study / Rated cards (segmented control: Study · Due · Rated · Starred): deck = cards in the current filter (`selected`) with `due <= today`, sorted by `due` ascending then data order. No rounds; rating a card removes it from the Due deck (it's no longer due). Empty state: "Nothing due. Nice work." with "Next due: <date>" if any, and a button to Study.
+- Stat line gains "N due" (unit-wide, like the other stats). Study tab badge shows the due count across all units when > 0.
+- Reset clears schedules with the ratings.
+
+## 2. Mock exam (Quiz tab: segmented "Practice" | "Mock exam")
+- Setup screen: units multi-select (default: the current filter unit, or all units when `all`), question count 10 / 20 / 40 (capped at what's available, showing "(n available)"), timer toggle (90 s per question), **Start**. A preset button **"Graded Unit Section 1 style"**: 5 random questions each from J0H934, J0HL34, J0HJ34 and J0J734 (20 total, 30-minute timer). Caption: "Practice in the style of the Graded Unit exam's selected-response section. Not an official paper."
+- Selection: random sample across the chosen units (for the preset, per unit), options shuffled like Practice.
+- During: question n of N, remaining time (if timed), A–D options, Previous / Next, a question-number grid to jump around, **Submit**. Answers can be changed; no feedback until submitted. At 0:00 it submits automatically. Submitting with unanswered questions asks to confirm.
+- Results: "x / N (p%)", time taken, a per-unit table (unit code · title, correct / asked, %), then the review list (reuse the Practice results rows: ✓ / ↺, your answer or "Not answered", correct answer, explanation, references).
+- History: the last 20 attempts saved as `{date, units, total, correct, durationSeconds, perUnit}`; shown under the setup screen with the date, score and % ("12 Nov · 15/20 · 75%").
+- An attempt in progress is saved and resumed (remaining time keeps counting from the saved deadline).
+- Mock answers do not change Practice `quizProgress` or `quizSeen`, but do count as activity for streaks.
+
+## 3. VLSM generator and drills (VLSM screen: segmented "Exercises" | "Generate" | "Drills")
+- **Exercises**: the 1.0 screen, unchanged.
+- **Solver** (shared by Generate and tests): sort LANs by hosts descending, ties by name ascending. For each: block = smallest power of two ≥ hosts + 2 (minimum 4), prefix = 32 − log2(block), network = next free address, mask, first = network + 1, last = broadcast − 1, broadcast = network + block − 1, usable capacity = block − 2. The next block starts at broadcast + 1. Must reproduce the `rows` of all 6 site exercises exactly.
+- **Generate**: difficulty Easy (parent /24, 3 LANs), Medium (/24, 4–5 LANs), Hard (/23 or /22, 5–6 LANs). Parent network: a random private block (192.168.x.0, 172.16–31.x.0 or 10.x.y.0) aligned to its prefix. LAN names "LAN A", "LAN B"… in random order of size. Host counts random in 2…(parent size / 2 − 2), redrawn until the solved allocation fits inside the parent. **New question** button.
+- Same layout as Exercises: prompt, request list, working text (not saved for generated ones), 3 hints, reveal worked solution with the same step text and table.
+- Answer boxes per LAN (in solver order): Network / prefix, Subnet mask, First usable, Last usable, Broadcast. **Check answers** marks each field green or red (trim spaces; prefix written as "a.b.c.d/n"). "x of y correct".
+- **Drills**: rounds of 10 random questions from four kinds: (a) "/n as a subnet mask?" ↔ "255.255.255.x as a prefix?", (b) "Usable hosts in a /n?", (c) "Network address of a.b.c.d/n?", (d) "Broadcast address of a.b.c.d/n?" (prefixes 16–30). Typed answer, **Check**, then shows correct/incorrect with the answer and a one-line working ("Block size 32, so …"). End-of-round score and **New round**. Best score saved.
+
+## 4. Bookmarks and notes
+- `starred: set of card ids`, `notes: cardId → text` (max 2000 chars).
+- Star toggle (☆/★, label "Star card" / "Unstar card") on the card in Study/Due/Rated/Starred/New, in Browse rows, and on Practice/mock feedback (stars the linked flashcard).
+- **Starred** card mode: starred cards in the current filter, data order, with rounds like Study. Empty: "No starred cards yet. Tap ☆ on any card to save it here."
+- "My note" area under the revealed answer (and in Browse): shows the note, or "Add a note" which opens an editor (sheet/dialog) with Save / Delete. Browse search also matches notes.
+- Reset saved progress gets a second choice: "Also delete stars and notes" (off by default).
+
+## 5. Reminders, streaks and progress
+- **Activity**: the set of local dates on which the user rated a card, checked a Practice answer, or answered/submitted a mock question. Also a count per day (number of such actions).
+- **Streak**: consecutive days ending today, or ending yesterday if there's no activity yet today. **Best streak** saved. Study header (or stat line) shows "🔥 n-day streak" when n ≥ 1.
+- **Reminder** (Settings → "Daily reminder" toggle + time picker, default 18:00): turning on asks for notification permission (iOS `UNUserNotificationCenter`; Android 13+ `POST_NOTIFICATIONS`). If denied, the toggle turns back off with an explanation and a link to system settings. One notification per day at that time: title "HNC Revision", body "N cards are due. Keep your n-day streak going." / "N cards are due today." / "A few minutes of revision keeps it fresh." (when nothing is due). Reschedule whenever the app saves state so the body stays current (iOS: schedule the next 7 days with their computed due counts; Android: inexact daily `AlarmManager` alarm whose receiver computes the text from saved state, re-armed by a `BOOT_COMPLETED` receiver and on app start). Tapping opens the app on Study → Due.
+- **Progress** screen (More): current and best streak, a 14-day bar chart of activity counts (accessible: each bar labelled with day and count), then per unit: "confident x / y cards", "n due", "quiz: c / a correct (p%)" from Practice results, and the latest mock score if any.
+
+## 6. Home screen widget
+- Snapshot written by the app whenever state saves or data loads: `{dueCount, streak, cardOfDay: {id, unit, topic, q}, updatedAt}`. Card of the day = a deterministic pick from all cards using the date (e.g. day number mod card count over cards sorted by id), preferring due cards when any are due.
+- **Small**: "N due" large, "🔥 n-day streak", app mark. **Medium**: "Card of the day", unit · topic, question (up to 3 lines), and "N due". Tapping opens the app; tapping the medium widget opens that card in Study (deep link `hncrevision://card/<id>`; iOS `widgetURL`/`Link`, Android PendingIntent extra), which shows it as a one-card deck.
+- iOS: a WidgetKit extension target `HNCRevisionWidget` (bundle id `net.estopia.hncrevision.widget`) sharing the App Group `group.net.estopia.hncrevision`. Move the app's saved state from `UserDefaults.standard` to `UserDefaults(suiteName: group)` with a one-time copy of the existing key; write the snapshot into the group; call `WidgetCenter.shared.reloadAllTimelines()` after changes. Timeline refreshes at local midnight.
+- Android: `AppWidgetProvider` + RemoteViews layouts (small and medium sizes via `appwidget-provider` xml with resize), colours from the app theme, dark-mode aware; updated by the app after saves and by `updatePeriodMillis`/midnight.
+
+## 7. New-content alerts
+- Fingerprint: for each card `id → hash(q + a + hint)`; for each question `id → hash(q + options + answer + explanation)` (a stable hash such as FNV-1a 64 written in both apps identically isn't required; each platform only compares with its own saved fingerprints).
+- After every successful data load (bundled, cached or live): if no fingerprints are saved, save them silently. Otherwise card ids that are new or whose hash changed are added to `newCardIds` (a saved set); questions changed are counted only. Save the new fingerprints and a `lastChange = {date, added, updated, questionsChanged}` when anything changed.
+- Study shows a banner when `newCardIds` (limited to cards that still exist) is non-empty: "N new or updated cards from the website" with **Study them** (a **New** card mode: those cards in data order, ignoring the filter) and a close button (clears the set). Viewing (revealing) a card removes it from the set.
+- Settings' data section adds "Last change: 3 added, 2 updated · 12 Nov" when known.
+
+## Wording and look
+Reuse the 1.0 components, colours and card styles. All new controls need accessibility labels, Dynamic Type / font scaling and dark mode.

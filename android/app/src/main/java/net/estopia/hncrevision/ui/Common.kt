@@ -33,7 +33,14 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SegmentedButton
+import androidx.compose.material3.SegmentedButtonDefaults
+import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
@@ -58,10 +65,13 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.liveRegion
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
@@ -70,7 +80,12 @@ import net.estopia.hncrevision.data.Reference
 import net.estopia.hncrevision.logic.ALL
 import net.estopia.hncrevision.logic.FilterView
 import net.estopia.hncrevision.logic.Stats
+import net.estopia.hncrevision.logic.ProgressStore
 import net.estopia.hncrevision.logic.TrackerView
+import net.estopia.hncrevision.logic.streakLabel
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 val CardShape = RoundedCornerShape(20.dp)
 val ControlShape = RoundedCornerShape(10.dp)
@@ -298,16 +313,23 @@ private fun TrackerGroup(label: String, items: List<String>) {
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-fun StatLine(stats: Stats) {
-    val text = "${stats.flashcards} flashcards · ${stats.confident} confident · ${stats.revisit} to revisit"
-    Row(
+fun StatLine(stats: Stats, streak: Int = 0) {
+    val streakText = streakLabel(streak)
+    val text = "${stats.flashcards} flashcards · ${stats.confident} confident · ${stats.revisit} to revisit · ${stats.due} due" +
+        (if (streak >= 1) " · $streak-day streak" else "")
+    Column(
         Modifier.semantics(mergeDescendants = true) { contentDescription = text },
-        horizontalArrangement = Arrangement.spacedBy(20.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        StatItem(stats.flashcards, "flashcards")
-        StatItem(stats.confident, "confident")
-        StatItem(stats.revisit, "to revisit")
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(20.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            StatItem(stats.flashcards, "flashcards")
+            StatItem(stats.confident, "confident")
+            StatItem(stats.revisit, "to revisit")
+            StatItem(stats.due, "due")
+        }
+        if (streakText != null) Text(streakText, style = MaterialTheme.typography.titleSmall)
     }
 }
 
@@ -363,7 +385,7 @@ fun FilterBar(filters: FilterView, stats: Stats, vm: AppViewModel) {
                 )
             }
         }
-        StatLine(stats)
+        StatLine(stats, vm.snapshot.streak)
     }
     if (sheetOpen) FilterSheet(filters, vm) { sheetOpen = false }
 }
@@ -476,5 +498,120 @@ fun IconTextButton(text: String, icon: androidx.compose.ui.graphics.vector.Image
         Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp))
         Spacer(Modifier.width(8.dp))
         Text(text)
+    }
+}
+
+private val DayFormat: DateTimeFormatter = DateTimeFormatter.ofPattern("d MMM", Locale.UK)
+private val WeekdayFormat: DateTimeFormatter = DateTimeFormatter.ofPattern("EEE d MMM", Locale.UK)
+
+/** "12 Nov". */
+fun formatDay(date: LocalDate): String = date.format(DayFormat)
+
+/** "Thu 12 Nov". */
+fun formatWeekday(date: LocalDate): String = date.format(WeekdayFormat)
+
+/** ☆ / ★ toggle, labelled "Star card" / "Unstar card" for TalkBack. */
+@Composable
+fun StarButton(starred: Boolean, onToggle: () -> Unit, modifier: Modifier = Modifier) {
+    val extra = LocalHncColors.current
+    IconButton(onClick = onToggle, modifier = modifier) {
+        Icon(
+            if (starred) AppIcons.Star else AppIcons.StarOutline,
+            contentDescription = if (starred) "Unstar card" else "Star card",
+            tint = if (starred) extra.star else extra.muted,
+        )
+    }
+}
+
+/** "My note": the saved note with Edit, or "Add a note"; both open the editor dialog. */
+@Composable
+fun NoteSection(note: String?, onSave: (String) -> Unit) {
+    var editing by rememberSaveable { mutableStateOf(false) }
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text("My note", style = MaterialTheme.typography.titleSmall, modifier = Modifier.semantics { heading() })
+        if (note != null) {
+            Text(note, style = MaterialTheme.typography.bodyMedium, color = LocalHncColors.current.note)
+            IconTextButton("Edit note", AppIcons.Edit) { editing = true }
+        } else {
+            IconTextButton("Add a note", AppIcons.Edit) { editing = true }
+        }
+    }
+    if (editing) {
+        NoteDialog(
+            initial = note.orEmpty(),
+            canDelete = note != null,
+            onSave = { onSave(it); editing = false },
+            onDelete = { onSave(""); editing = false },
+            onDismiss = { editing = false },
+        )
+    }
+}
+
+@Composable
+private fun NoteDialog(initial: String, canDelete: Boolean, onSave: (String) -> Unit, onDelete: () -> Unit, onDismiss: () -> Unit) {
+    var text by rememberSaveable { mutableStateOf(initial) }
+    val limit = ProgressStore.NOTE_LIMIT
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("My note") },
+        text = {
+            OutlinedTextField(
+                value = text,
+                onValueChange = { text = it.take(limit) },
+                label = { Text("Note for this card") },
+                minLines = 4,
+                maxLines = 10,
+                supportingText = { Text("${text.length} / $limit") },
+                modifier = Modifier.fillMaxWidth(),
+                shape = ControlShape,
+            )
+        },
+        confirmButton = { TextButton(onClick = { onSave(text) }, enabled = text.isNotBlank()) { Text("Save") } },
+        dismissButton = {
+            Row {
+                if (canDelete) TextButton(onClick = onDelete) { Text("Delete") }
+                TextButton(onClick = onDismiss) { Text("Cancel") }
+            }
+        },
+    )
+}
+
+/** Soft accent banner with an action and a close button. */
+@Composable
+fun Banner(text: String, action: String, onAction: () -> Unit, closeLabel: String, onClose: () -> Unit) {
+    val extra = LocalHncColors.current
+    Surface(
+        shape = ControlShape,
+        color = extra.tagBackground,
+        border = BorderStroke(1.dp, extra.line),
+        modifier = Modifier.fillMaxWidth().semantics { liveRegion = LiveRegionMode.Polite },
+    ) {
+        Row(Modifier.padding(start = 14.dp, top = 8.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(text, style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
+                PrimaryButton(action, onAction)
+            }
+            IconButton(onClick = onClose) { Icon(AppIcons.Close, contentDescription = closeLabel) }
+        }
+    }
+}
+
+/** Material segmented control in the app's colours, with labels that wrap at large font sizes. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun <T> Segmented(options: List<T>, selected: T, label: (T) -> String, onSelect: (T) -> Unit, modifier: Modifier = Modifier) {
+    SingleChoiceSegmentedButtonRow(modifier.fillMaxWidth()) {
+        options.forEachIndexed { i, option ->
+            SegmentedButton(
+                selected = option == selected,
+                onClick = { onSelect(option) },
+                shape = SegmentedButtonDefaults.itemShape(i, options.size),
+                icon = {},
+                colors = SegmentedButtonDefaults.colors(
+                    activeContainerColor = MaterialTheme.colorScheme.secondaryContainer,
+                    activeContentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                ),
+            ) { Text(label(option), maxLines = 2, textAlign = TextAlign.Center) }
+        }
     }
 }

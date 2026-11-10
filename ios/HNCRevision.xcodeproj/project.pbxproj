@@ -8,9 +8,13 @@
 
 /* Begin PBXBuildFile section */
 		046CFCEF437F8201959D83FF /* OutcomesScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 01046DBC22975236E7809100 /* OutcomesScreen.swift */; };
+		0DACBD95DB57404BE70E77EA /* ProgressScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = FD5A04D64ABB281B8B218F98 /* ProgressScreen.swift */; };
 		1AAC2DECA344F7E312C99B29 /* HNCRevisionApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2B3919F17AA9EFC67ED70542 /* HNCRevisionApp.swift */; };
+		2B427E8300BDB33285C808E0 /* RevisionCore in Frameworks */ = {isa = PBXBuildFile; productRef = 6416433B0FBCE8426BE76666 /* RevisionCore */; };
+		302B1D682FF20995392BB869 /* ReminderScheduler.swift in Sources */ = {isa = PBXBuildFile; fileRef = D339F43BD82B21B2F1977805 /* ReminderScheduler.swift */; };
 		376CAF0412BCC411690897D7 /* cards.js in Resources */ = {isa = PBXBuildFile; fileRef = 48B14C81E2C5959629A41A9A /* cards.js */; };
 		3E8021DFCE5204537A82BC4D /* RevisionCore in Frameworks */ = {isa = PBXBuildFile; productRef = C38AE432F2855533419B6B4E /* RevisionCore */; };
+		46DB8F1F23AB54F7F5A1E29F /* MockExamView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 93E169363D7DEAD3F7434A6D /* MockExamView.swift */; };
 		5FD0E1C58607D6F091DEE13F /* SettingsScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = AE6F5E76DBEEDBDB5D0C991C /* SettingsScreen.swift */; };
 		64704C2F03EB96AB37BEE5D6 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = C71C5EE206969D5511921FB9 /* Assets.xcassets */; };
 		6A22A81860A399DA60B95AD3 /* Speaker.swift in Sources */ = {isa = PBXBuildFile; fileRef = E9F6FED5224C84F57A7A0B1C /* Speaker.swift */; };
@@ -22,34 +26,89 @@
 		900DF8C179A3B83DE3D24E5F /* quiz.js in Resources */ = {isa = PBXBuildFile; fileRef = 3DCC9F558C73821832E13955 /* quiz.js */; };
 		9F02F9878A5656FF6895B34C /* BrowseScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = D85C83D74580A6F3C2835E40 /* BrowseScreen.swift */; };
 		A4C45268B818E4D2EE707989 /* Components.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0BC09A8132430BF5E0B2BB55 /* Components.swift */; };
+		A701E3E7AC80949D00B14426 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = AFCFD33EB1B0EFA3BB94E45E /* AppDelegate.swift */; };
+		BA786440352C49ABA047D6E7 /* HNCRevisionWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = 8AFEAC1D233E4FA570F6BE24 /* HNCRevisionWidget.swift */; };
 		C7B3B6F30C01CFFCD22E2AA1 /* vlsm.js in Resources */ = {isa = PBXBuildFile; fileRef = 2B335FA681D7A3FB5C4644BE /* vlsm.js */; };
+		D5B57880A9F495794B6DFA1C /* HNCRevisionWidget.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 48B17545587C91C4D9E20B94 /* HNCRevisionWidget.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 		D7871973B3B5BA70F73E6E59 /* FilterBar.swift in Sources */ = {isa = PBXBuildFile; fileRef = 182B8A5CA2FCF9A3D84E9935 /* FilterBar.swift */; };
+		DACB46A24DE0465AB1C60652 /* VLSMGenerateView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 03F650C5AACAC20A8E43BF73 /* VLSMGenerateView.swift */; };
+		E30BEC5735880F8BFD0C55CA /* WidgetKit.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = AE27E79447229A3F42DB72A4 /* WidgetKit.framework */; };
+		EAD00DBD53028756C3C51FC9 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = ADE7B8D7DB600C250F1AA7E4 /* Assets.xcassets */; };
 		F50EEB32B751CABFB96796F7 /* VLSMScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = 2462309B8652E777109B011F /* VLSMScreen.swift */; };
+		F7B78F8A74E7C648A7E9B9B7 /* SwiftUI.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2B7804CCDEE90D6E2C0971A3 /* SwiftUI.framework */; };
 /* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		9084F783092047E7E6E8A976 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 094B0AE0214320961FCA302C /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = E94DB88F64964E5B118E615C;
+			remoteInfo = HNCRevisionWidget;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		03E294F9A58D5A8D690109AF /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				D5B57880A9F495794B6DFA1C /* HNCRevisionWidget.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		01046DBC22975236E7809100 /* OutcomesScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = OutcomesScreen.swift; sourceTree = "<group>"; };
+		03F650C5AACAC20A8E43BF73 /* VLSMGenerateView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VLSMGenerateView.swift; sourceTree = "<group>"; };
 		0BC09A8132430BF5E0B2BB55 /* Components.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Components.swift; sourceTree = "<group>"; };
 		182B8A5CA2FCF9A3D84E9935 /* FilterBar.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FilterBar.swift; sourceTree = "<group>"; };
 		23E9504DC9CE059A1CDDF855 /* MoreScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MoreScreen.swift; sourceTree = "<group>"; };
 		2462309B8652E777109B011F /* VLSMScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VLSMScreen.swift; sourceTree = "<group>"; };
 		2B335FA681D7A3FB5C4644BE /* vlsm.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; name = vlsm.js; path = ../shared/data/vlsm.js; sourceTree = "<group>"; };
 		2B3919F17AA9EFC67ED70542 /* HNCRevisionApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HNCRevisionApp.swift; sourceTree = "<group>"; };
+		2B7804CCDEE90D6E2C0971A3 /* SwiftUI.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = SwiftUI.framework; path = System/Library/Frameworks/SwiftUI.framework; sourceTree = SDKROOT; };
 		33D868025C27880A4858238A /* RevisionCore */ = {isa = PBXFileReference; lastKnownFileType = folder; name = RevisionCore; path = RevisionCore; sourceTree = SOURCE_ROOT; };
 		3DCC9F558C73821832E13955 /* quiz.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; name = quiz.js; path = ../shared/data/quiz.js; sourceTree = "<group>"; };
+		46D84044F185128BC2A768AD /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
 		48B14C81E2C5959629A41A9A /* cards.js */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.javascript; name = cards.js; path = ../shared/data/cards.js; sourceTree = "<group>"; };
+		48B17545587C91C4D9E20B94 /* HNCRevisionWidget.appex */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = "wrapper.app-extension"; path = HNCRevisionWidget.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		4ECBC7002A18FCA86C5FEB40 /* HNCRevisionWidget.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = HNCRevisionWidget.entitlements; sourceTree = "<group>"; };
 		5D9CBBAB51451500BDC231B3 /* Theme.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Theme.swift; sourceTree = "<group>"; };
 		755098A05AFA9C8E5ED576AC /* StudyScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = StudyScreen.swift; sourceTree = "<group>"; };
 		759B5AF5371973376276697A /* HNCRevision.app */ = {isa = PBXFileReference; includeInIndex = 0; lastKnownFileType = wrapper.application; path = HNCRevision.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		7B0597CB43309825E4D74AE1 /* RootView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RootView.swift; sourceTree = "<group>"; };
+		8AFEAC1D233E4FA570F6BE24 /* HNCRevisionWidget.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HNCRevisionWidget.swift; sourceTree = "<group>"; };
+		93E169363D7DEAD3F7434A6D /* MockExamView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MockExamView.swift; sourceTree = "<group>"; };
+		A8D185587FFE73DFC31AC3FC /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		ADE7B8D7DB600C250F1AA7E4 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		AE27E79447229A3F42DB72A4 /* WidgetKit.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = WidgetKit.framework; path = System/Library/Frameworks/WidgetKit.framework; sourceTree = SDKROOT; };
 		AE6F5E76DBEEDBDB5D0C991C /* SettingsScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SettingsScreen.swift; sourceTree = "<group>"; };
+		AFCFD33EB1B0EFA3BB94E45E /* AppDelegate.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		B90A9F6DC8E74E94B7FDA7DA /* QuizScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = QuizScreen.swift; sourceTree = "<group>"; };
 		C71C5EE206969D5511921FB9 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
+		D339F43BD82B21B2F1977805 /* ReminderScheduler.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReminderScheduler.swift; sourceTree = "<group>"; };
 		D85C83D74580A6F3C2835E40 /* BrowseScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = BrowseScreen.swift; sourceTree = "<group>"; };
 		E9F6FED5224C84F57A7A0B1C /* Speaker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = Speaker.swift; sourceTree = "<group>"; };
+		FB133583945802FF2266E024 /* HNCRevision.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = HNCRevision.entitlements; sourceTree = "<group>"; };
+		FD5A04D64ABB281B8B218F98 /* ProgressScreen.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProgressScreen.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
+		6A2EA88874A653E26EB1D648 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				2B427E8300BDB33285C808E0 /* RevisionCore in Frameworks */,
+				E30BEC5735880F8BFD0C55CA /* WidgetKit.framework in Frameworks */,
+				F7B78F8A74E7C648A7E9B9B7 /* SwiftUI.framework in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		8460A4F4896D9768AE740531 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
@@ -66,9 +125,20 @@
 			children = (
 				59B1C9817A3278363AE83831 /* BundledData */,
 				1C4142A45F509F7141DC27DD /* HNCRevision */,
+				B42A048973B0DA0116E3CA80 /* HNCRevisionWidget */,
 				503AD5C9DD72BFBE4BDF333A /* Packages */,
+				19C4494BE7E709984DC47D02 /* Frameworks */,
 				D90D74E998F8493B9DF04D71 /* Products */,
 			);
+			sourceTree = "<group>";
+		};
+		19C4494BE7E709984DC47D02 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				2B7804CCDEE90D6E2C0971A3 /* SwiftUI.framework */,
+				AE27E79447229A3F42DB72A4 /* WidgetKit.framework */,
+			);
+			name = Frameworks;
 			sourceTree = "<group>";
 		};
 		1C4142A45F509F7141DC27DD /* HNCRevision */ = {
@@ -78,6 +148,8 @@
 				98186C1A53EEEDE96DA42E96 /* Theme */,
 				5C106D8F568E5A8424522FEB /* Views */,
 				C71C5EE206969D5511921FB9 /* Assets.xcassets */,
+				FB133583945802FF2266E024 /* HNCRevision.entitlements */,
+				A8D185587FFE73DFC31AC3FC /* Info.plist */,
 			);
 			path = HNCRevision;
 			sourceTree = "<group>";
@@ -123,6 +195,7 @@
 		7BE67FEE6662C606D000B031 /* Quiz */ = {
 			isa = PBXGroup;
 			children = (
+				93E169363D7DEAD3F7434A6D /* MockExamView.swift */,
 				B90A9F6DC8E74E94B7FDA7DA /* QuizScreen.swift */,
 			);
 			path = Quiz;
@@ -133,7 +206,9 @@
 			children = (
 				23E9504DC9CE059A1CDDF855 /* MoreScreen.swift */,
 				01046DBC22975236E7809100 /* OutcomesScreen.swift */,
+				FD5A04D64ABB281B8B218F98 /* ProgressScreen.swift */,
 				AE6F5E76DBEEDBDB5D0C991C /* SettingsScreen.swift */,
+				03F650C5AACAC20A8E43BF73 /* VLSMGenerateView.swift */,
 				2462309B8652E777109B011F /* VLSMScreen.swift */,
 			);
 			path = More;
@@ -150,7 +225,9 @@
 		ABF05EA28366E926A2D6A56F /* App */ = {
 			isa = PBXGroup;
 			children = (
+				AFCFD33EB1B0EFA3BB94E45E /* AppDelegate.swift */,
 				2B3919F17AA9EFC67ED70542 /* HNCRevisionApp.swift */,
+				D339F43BD82B21B2F1977805 /* ReminderScheduler.swift */,
 				7B0597CB43309825E4D74AE1 /* RootView.swift */,
 				E9F6FED5224C84F57A7A0B1C /* Speaker.swift */,
 			);
@@ -166,10 +243,22 @@
 			path = Shared;
 			sourceTree = "<group>";
 		};
+		B42A048973B0DA0116E3CA80 /* HNCRevisionWidget */ = {
+			isa = PBXGroup;
+			children = (
+				ADE7B8D7DB600C250F1AA7E4 /* Assets.xcassets */,
+				4ECBC7002A18FCA86C5FEB40 /* HNCRevisionWidget.entitlements */,
+				8AFEAC1D233E4FA570F6BE24 /* HNCRevisionWidget.swift */,
+				46D84044F185128BC2A768AD /* Info.plist */,
+			);
+			path = HNCRevisionWidget;
+			sourceTree = "<group>";
+		};
 		D90D74E998F8493B9DF04D71 /* Products */ = {
 			isa = PBXGroup;
 			children = (
 				759B5AF5371973376276697A /* HNCRevision.app */,
+				48B17545587C91C4D9E20B94 /* HNCRevisionWidget.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -192,10 +281,12 @@
 				F793DC62D29BDAFF4A8C9573 /* Sources */,
 				BE458323266C19FA9E816695 /* Resources */,
 				8460A4F4896D9768AE740531 /* Frameworks */,
+				03E294F9A58D5A8D690109AF /* Embed Foundation Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				20F6E32320DC5F24CFD531A6 /* PBXTargetDependency */,
 			);
 			name = HNCRevision;
 			packageProductDependencies = (
@@ -204,6 +295,26 @@
 			productName = HNCRevision;
 			productReference = 759B5AF5371973376276697A /* HNCRevision.app */;
 			productType = "com.apple.product-type.application";
+		};
+		E94DB88F64964E5B118E615C /* HNCRevisionWidget */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = EB0B72F4426C183BC9F4EDF6 /* Build configuration list for PBXNativeTarget "HNCRevisionWidget" */;
+			buildPhases = (
+				B1893875247163725457239E /* Sources */,
+				77BD01098E7D5AE0AFF13554 /* Resources */,
+				6A2EA88874A653E26EB1D648 /* Frameworks */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = HNCRevisionWidget;
+			packageProductDependencies = (
+				6416433B0FBCE8426BE76666 /* RevisionCore */,
+			);
+			productName = HNCRevisionWidget;
+			productReference = 48B17545587C91C4D9E20B94 /* HNCRevisionWidget.appex */;
+			productType = "com.apple.product-type.app-extension";
 		};
 /* End PBXNativeTarget section */
 
@@ -215,6 +326,10 @@
 				LastUpgradeCheck = 1430;
 				TargetAttributes = {
 					2F1A73132B8B6F06338B6F42 = {
+						DevelopmentTeam = LQCQTAV3UW;
+						ProvisioningStyle = Automatic;
+					};
+					E94DB88F64964E5B118E615C = {
 						DevelopmentTeam = LQCQTAV3UW;
 						ProvisioningStyle = Automatic;
 					};
@@ -238,11 +353,20 @@
 			projectRoot = "";
 			targets = (
 				2F1A73132B8B6F06338B6F42 /* HNCRevision */,
+				E94DB88F64964E5B118E615C /* HNCRevisionWidget */,
 			);
 		};
 /* End PBXProject section */
 
 /* Begin PBXResourcesBuildPhase section */
+		77BD01098E7D5AE0AFF13554 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				EAD00DBD53028756C3C51FC9 /* Assets.xcassets in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		BE458323266C19FA9E816695 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -257,27 +381,48 @@
 /* End PBXResourcesBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		B1893875247163725457239E /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				BA786440352C49ABA047D6E7 /* HNCRevisionWidget.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		F793DC62D29BDAFF4A8C9573 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				A701E3E7AC80949D00B14426 /* AppDelegate.swift in Sources */,
 				9F02F9878A5656FF6895B34C /* BrowseScreen.swift in Sources */,
 				A4C45268B818E4D2EE707989 /* Components.swift in Sources */,
 				D7871973B3B5BA70F73E6E59 /* FilterBar.swift in Sources */,
 				1AAC2DECA344F7E312C99B29 /* HNCRevisionApp.swift in Sources */,
+				46DB8F1F23AB54F7F5A1E29F /* MockExamView.swift in Sources */,
 				8B320971652BFD008CFECAAC /* MoreScreen.swift in Sources */,
 				046CFCEF437F8201959D83FF /* OutcomesScreen.swift in Sources */,
+				0DACBD95DB57404BE70E77EA /* ProgressScreen.swift in Sources */,
 				73D245D6ED50ABEF0A157CBE /* QuizScreen.swift in Sources */,
+				302B1D682FF20995392BB869 /* ReminderScheduler.swift in Sources */,
 				6D25555ADF35F97D49C3E8C4 /* RootView.swift in Sources */,
 				5FD0E1C58607D6F091DEE13F /* SettingsScreen.swift in Sources */,
 				6A22A81860A399DA60B95AD3 /* Speaker.swift in Sources */,
 				81BB77FA5443BD44668535BD /* StudyScreen.swift in Sources */,
 				88C2AED5F8468F872DA8FD63 /* Theme.swift in Sources */,
+				DACB46A24DE0465AB1C60652 /* VLSMGenerateView.swift in Sources */,
 				F50EEB32B751CABFB96796F7 /* VLSMScreen.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		20F6E32320DC5F24CFD531A6 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = E94DB88F64964E5B118E615C /* HNCRevisionWidget */;
+			targetProxy = 9084F783092047E7E6E8A976 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		21AEB1147B01E4E10E13C907 /* Debug */ = {
@@ -415,12 +560,32 @@
 			};
 			name = Release;
 		};
+		50AE132B11ECF1618E189862 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = HNCRevisionWidget/HNCRevisionWidget.entitlements;
+				CURRENT_PROJECT_VERSION = 2;
+				INFOPLIST_FILE = HNCRevisionWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "HNC Revision";
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks";
+				MARKETING_VERSION = 1.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = net.estopia.hncrevision.widget;
+				PRODUCT_NAME = HNCRevisionWidget;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
 		6D9B08D7428794EC23FA92AF /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = HNCRevision/HNCRevision.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
+				INFOPLIST_FILE = HNCRevision/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "HNC Revision";
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.education";
@@ -433,10 +598,28 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.0;
+				MARKETING_VERSION = 1.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = net.estopia.hncrevision;
 				PRODUCT_NAME = HNCRevision;
 				SDKROOT = iphoneos;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Release;
+		};
+		D8F6BEFAA6182FDADC5A0329 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = HNCRevisionWidget/HNCRevisionWidget.entitlements;
+				CURRENT_PROJECT_VERSION = 2;
+				INFOPLIST_FILE = HNCRevisionWidget/Info.plist;
+				INFOPLIST_KEY_CFBundleDisplayName = "HNC Revision";
+				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
+				LD_RUNPATH_SEARCH_PATHS = "$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks";
+				MARKETING_VERSION = 1.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = net.estopia.hncrevision.widget;
+				PRODUCT_NAME = HNCRevisionWidget;
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;
@@ -445,8 +628,10 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				CODE_SIGN_ENTITLEMENTS = HNCRevision/HNCRevision.entitlements;
 				CODE_SIGN_IDENTITY = "iPhone Developer";
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = 2;
+				INFOPLIST_FILE = HNCRevision/Info.plist;
 				INFOPLIST_KEY_CFBundleDisplayName = "HNC Revision";
 				INFOPLIST_KEY_ITSAppUsesNonExemptEncryption = NO;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.education";
@@ -459,7 +644,7 @@
 					"$(inherited)",
 					"@executable_path/Frameworks",
 				);
-				MARKETING_VERSION = 1.0.0;
+				MARKETING_VERSION = 1.1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = net.estopia.hncrevision;
 				PRODUCT_NAME = HNCRevision;
 				SDKROOT = iphoneos;
@@ -488,6 +673,15 @@
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Debug;
 		};
+		EB0B72F4426C183BC9F4EDF6 /* Build configuration list for PBXNativeTarget "HNCRevisionWidget" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				50AE132B11ECF1618E189862 /* Debug */,
+				D8F6BEFAA6182FDADC5A0329 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
 /* End XCConfigurationList section */
 
 /* Begin XCLocalSwiftPackageReference section */
@@ -498,6 +692,10 @@
 /* End XCLocalSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+		6416433B0FBCE8426BE76666 /* RevisionCore */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = RevisionCore;
+		};
 		C38AE432F2855533419B6B4E /* RevisionCore */ = {
 			isa = XCSwiftPackageProductDependency;
 			productName = RevisionCore;

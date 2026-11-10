@@ -1,4 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="paper">#0F1F1C</color>
+    <color name="widget_background">#173D37</color>
+    <color name="widget_border">#2E5049</color>
+    <color name="widget_ink">#EEF2EA</color>
+    <color name="widget_muted">#A9B8B0</color>
+    <color name="widget_pill">#D5E9A7</color>
+    <color name="widget_pill_text">#173D37</color>
 </resources>

@@ -39,6 +39,10 @@ data class HncColors(
     val selectedOption: Color,
     val note: Color,
     val card: Color,
+    /** Filled star and the streak/due accents. */
+    val star: Color,
+    /** Activity chart bars. */
+    val bar: Color,
 )
 
 private val LightExtra = HncColors(
@@ -55,6 +59,8 @@ private val LightExtra = HncColors(
     selectedOption = Color(0xFFF0F4E7),
     note = Color(0xFF785139),
     card = Color.White,
+    star = Color(0xFF8A5A00),
+    bar = Color(0xFF87A867),
 )
 
 private val DarkExtra = HncColors(
@@ -71,6 +77,8 @@ private val DarkExtra = HncColors(
     selectedOption = Color(0xFF22463E),
     note = Color(0xFFE2BC9B),
     card = Color(0xFF173D37),
+    star = Color(0xFFF2C46B),
+    bar = Color(0xFF9CBD7C),
 )
 
 private fun lightScheme(dyslexia: Boolean) = lightColorScheme(

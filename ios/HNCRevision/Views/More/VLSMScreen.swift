@@ -1,39 +1,29 @@
 import RevisionCore
 import SwiftUI
 
-/// Variable Length Subnet Masking practice.
+/// Variable Length Subnet Masking practice: the site's exercises, generated questions and quick drills.
 struct VLSMScreen: View {
-    @Environment(RevisionStore.self) private var store
-    @Environment(\.dyslexiaMode) private var dyslexia
-    @State private var selection = 0
-    @State private var hintsShown = 0
-    @State private var showAnswer = false
-    @FocusState private var editorFocused: Bool
+    enum Section: String, CaseIterable { case exercises, generate, drills }
+
+    @State private var section: Section = .exercises
+    @State private var exercise = 0
+    @FocusState private var keyboardFocused: Bool
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                if let exercise = store.data.vlsmExercises[safe: selection] {
-                    intro
-                    picker
-                    question(exercise)
-                    working
-                    hintList
-                    FlowButtons {
-                        Button(hintButtonTitle) { withAnimation { hintsShown += 1 } }
-                            .buttonStyle(.app(.soft, expand: true))
-                            .disabled(hintsShown >= hintCount)
-                        Button(showAnswer ? "Hide answer" : "Reveal answer") {
-                            withAnimation { showAnswer.toggle() }
-                        }
-                        .buttonStyle(.app(.primary, expand: true))
-                        .accessibilityValue(showAnswer ? "Expanded" : "Collapsed")
-                    }
-                    if showAnswer {
-                        solution(exercise)
-                    }
-                } else {
-                    EmptyStateCard(title: "No VLSM exercises", message: "Check for updates in Settings.")
+                Picker("VLSM practice", selection: $section) {
+                    Text("Exercises").tag(Section.exercises)
+                    Text("Generate").tag(Section.generate)
+                    Text("Drills").tag(Section.drills)
+                }
+                .pickerStyle(.segmented)
+                .accessibilityLabel("VLSM practice type")
+
+                switch section {
+                case .exercises: VLSMExercisesView(selection: $exercise, focused: $keyboardFocused)
+                case .generate: VLSMGenerateView(focused: $keyboardFocused)
+                case .drills: SubnetDrillView(focused: $keyboardFocused)
                 }
             }
             .foregroundStyle(Palette.ink)
@@ -47,7 +37,44 @@ struct VLSMScreen: View {
         .toolbar {
             ToolbarItemGroup(placement: .keyboard) {
                 Spacer()
-                Button("Done") { editorFocused = false }
+                Button("Done") { keyboardFocused = false }
+            }
+        }
+    }
+}
+
+/// The site's six exercises (the 1.0 screen).
+struct VLSMExercisesView: View {
+    @Binding var selection: Int
+    var focused: FocusState<Bool>.Binding
+    @Environment(RevisionStore.self) private var store
+    @Environment(\.dyslexiaMode) private var dyslexia
+    @State private var hintsShown = 0
+    @State private var showAnswer = false
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            if let exercise = store.data.vlsmExercises[safe: selection] {
+                VLSMIntro()
+                picker
+                VLSMQuestionView(exercise: exercise)
+                working
+                VLSMHintList(hints: hints, shown: hintsShown)
+                FlowButtons {
+                    Button(hintButtonTitle) { withAnimation { hintsShown += 1 } }
+                        .buttonStyle(.app(.soft, expand: true))
+                        .disabled(hintsShown >= hintCount)
+                    Button(showAnswer ? "Hide answer" : "Reveal answer") {
+                        withAnimation { showAnswer.toggle() }
+                    }
+                    .buttonStyle(.app(.primary, expand: true))
+                    .accessibilityValue(showAnswer ? "Expanded" : "Collapsed")
+                }
+                if showAnswer {
+                    VLSMSolutionView(rows: exercise.rows)
+                }
+            } else {
+                EmptyStateCard(title: "No VLSM exercises", message: "Check for updates in Settings.")
             }
         }
         .onChange(of: selection) {
@@ -62,17 +89,6 @@ struct VLSMScreen: View {
     private var hintButtonTitle: String {
         if hintCount == 0 { return "No hints" }
         return hintsShown >= hintCount ? "All \(hintCount) hints shown" : "Show hint (\(hintsShown + 1) of \(hintCount))"
-    }
-
-    private var intro: some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Eyebrow("IPv4 subnetting practice")
-            Text("Variable Length Subnet Masking")
-                .appFont(.title2, weight: .semibold)
-                .accessibilityAddTraits(.isHeader)
-            Text("Give each LAN the smallest subnet that fits. Allocate largest first, starting at the base network address, and break ties in alphabetical order. Use conventional IPv4 subnets with network and broadcast addresses reserved.")
-                .appFont(.body)
-        }
     }
 
     private var picker: some View {
@@ -90,24 +106,6 @@ struct VLSMScreen: View {
         .cardStyle(radius: 12, padding: 12)
     }
 
-    private func question(_ exercise: VLSMExercise) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            Text("Allocate subnets within \(exercise.parent).")
-                .appFont(.headline)
-            ForEach(exercise.requests, id: \.self) { request in
-                HStack(alignment: .firstTextBaseline, spacing: 8) {
-                    Text("•").accessibilityHidden(true)
-                    Text("\(request.lan) needs \(request.hosts) usable addresses")
-                }
-                .appFont(.body)
-            }
-            Text("Find each LAN’s network address and prefix, subnet mask, usable host range and broadcast address.")
-                .appFont(.body)
-                .foregroundStyle(Palette.muted)
-        }
-        .cardStyle(padding: 18)
-    }
-
     private var working: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text("Your working").appFont(.subheadline, weight: .semibold)
@@ -116,7 +114,7 @@ struct VLSMScreen: View {
                 set: { store.setVLSMWorking($0, for: selection) }
             ))
             .appFont(.body)
-            .focused($editorFocused)
+            .focused(focused)
             .scrollContentBackground(.hidden)
             .frame(minHeight: 160)
             .padding(8)
@@ -137,11 +135,52 @@ struct VLSMScreen: View {
             .accessibilityHint("Saved on this device for this question")
         }
     }
+}
 
-    @ViewBuilder private var hintList: some View {
-        if hintsShown > 0 {
+struct VLSMIntro: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Eyebrow("IPv4 subnetting practice")
+            Text("Variable Length Subnet Masking")
+                .appFont(.title2, weight: .semibold)
+                .accessibilityAddTraits(.isHeader)
+            Text("Give each LAN the smallest subnet that fits. Allocate largest first, starting at the base network address, and break ties in alphabetical order. Use conventional IPv4 subnets with network and broadcast addresses reserved.")
+                .appFont(.body)
+        }
+    }
+}
+
+/// "Allocate subnets within …" and the list of LANs.
+struct VLSMQuestionView: View {
+    let exercise: VLSMExercise
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("Allocate subnets within \(exercise.parent).")
+                .appFont(.headline)
+            ForEach(exercise.requests, id: \.self) { request in
+                HStack(alignment: .firstTextBaseline, spacing: 8) {
+                    Text("•").accessibilityHidden(true)
+                    Text("\(request.lan) needs \(request.hosts) usable addresses")
+                }
+                .appFont(.body)
+            }
+            Text("Find each LAN’s network address and prefix, subnet mask, usable host range and broadcast address.")
+                .appFont(.body)
+                .foregroundStyle(Palette.muted)
+        }
+        .cardStyle(padding: 18)
+    }
+}
+
+struct VLSMHintList: View {
+    let hints: [String]
+    let shown: Int
+
+    var body: some View {
+        if shown > 0 {
             VStack(alignment: .leading, spacing: 8) {
-                ForEach(Array(hints.prefix(hintsShown).enumerated()), id: \.offset) { index, hint in
+                ForEach(Array(hints.prefix(shown).enumerated()), id: \.offset) { index, hint in
                     HStack(alignment: .firstTextBaseline, spacing: 8) {
                         Text("\(index + 1).").fontWeight(.semibold)
                         Text(hint)
@@ -156,13 +195,18 @@ struct VLSMScreen: View {
             .background(Palette.tagFill, in: RoundedRectangle(cornerRadius: 10))
         }
     }
+}
 
-    private func solution(_ exercise: VLSMExercise) -> some View {
+/// The worked solution: one sentence per LAN and the allocation table.
+struct VLSMSolutionView: View {
+    let rows: [VLSMRow]
+
+    var body: some View {
         VStack(alignment: .leading, spacing: 12) {
             Text("Worked solution")
                 .appFont(.title3, weight: .semibold)
                 .accessibilityAddTraits(.isHeader)
-            ForEach(Array(exercise.rows.enumerated()), id: \.offset) { index, row in
+            ForEach(Array(rows.enumerated()), id: \.offset) { index, row in
                 HStack(alignment: .firstTextBaseline, spacing: 8) {
                     Text("\(index + 1).").fontWeight(.semibold)
                     Text(row.explanation)
@@ -178,7 +222,7 @@ struct VLSMScreen: View {
                         }
                     }
                     Divider().overlay(Palette.line)
-                    ForEach(Array(exercise.rows.enumerated()), id: \.offset) { _, row in
+                    ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
                         GridRow {
                             ForEach(Array(row.cells.enumerated()), id: \.offset) { _, cell in
                                 Text(cell).appFont(.footnote).monospacedDigit()

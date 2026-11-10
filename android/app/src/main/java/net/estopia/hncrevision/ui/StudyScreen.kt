@@ -4,6 +4,8 @@ import androidx.compose.animation.core.Animatable
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -26,9 +28,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.SegmentedButton
-import androidx.compose.material3.SegmentedButtonDefaults
-import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
@@ -70,13 +69,17 @@ fun StudyScreen(vm: AppViewModel) {
     LaunchedEffect(deck.current?.card?.id, mode) { scroll.animateScrollTo(0) }
 
     ScreenScaffold(
-        title = if (mode == CardMode.STUDY) "Study" else "Rated cards",
+        title = mode.title,
         actions = {
-            IconButton(onClick = { vm.act { shuffle(mode) } }, enabled = deck.size >= 2) {
-                Icon(AppIcons.Shuffle, contentDescription = "Shuffle")
+            if (mode != CardMode.CARD) {
+                IconButton(onClick = { vm.act { shuffle(mode) } }, enabled = deck.size >= 2) {
+                    Icon(AppIcons.Shuffle, contentDescription = "Shuffle")
+                }
             }
-            IconButton(onClick = { vm.act { restart(mode) } }, enabled = deck.size > 0) {
-                Icon(AppIcons.Restart, contentDescription = "Restart round")
+            if (deck.usesRounds) {
+                IconButton(onClick = { vm.act { restart(mode) } }, enabled = deck.size > 0) {
+                    Icon(AppIcons.Restart, contentDescription = "Restart round")
+                }
             }
         },
     ) {
@@ -84,23 +87,44 @@ fun StudyScreen(vm: AppViewModel) {
             Column(Modifier.fillMaxSize().verticalScroll(scroll)) {
                 ContentWidth(Modifier.padding(vertical = 12.dp)) {
                     FilterBar(s.filters, s.stats, vm)
-                    SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
-                        CardMode.entries.forEachIndexed { i, m ->
-                            SegmentedButton(
-                                selected = mode == m,
-                                onClick = { vm.act { setCardMode(m) } },
-                                shape = SegmentedButtonDefaults.itemShape(i, CardMode.entries.size),
-                            ) { Text(if (m == CardMode.STUDY) "Study" else "Rated cards") }
+                    if (s.newCardCount > 0 && mode != CardMode.NEW) {
+                        Banner(
+                            text = "${s.newCardCount} new or updated ${if (s.newCardCount == 1) "card" else "cards"} from the website",
+                            action = "Study them",
+                            onAction = { vm.act { setCardMode(CardMode.NEW) } },
+                            closeLabel = "Dismiss new cards",
+                            onClose = { vm.act { dismissNewCards() } },
+                        )
+                    }
+                    if (mode in CardMode.SEGMENTED) {
+                        Segmented(
+                            options = CardMode.SEGMENTED,
+                            selected = mode,
+                            label = { m -> if (m == CardMode.DUE && s.stats.due > 0) "Due ${s.stats.due}" else if (m == CardMode.RATED) "Rated" else m.title },
+                            onSelect = { m -> vm.act { setCardMode(m) } },
+                        )
+                    } else {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                if (mode == CardMode.NEW) "New or updated cards from the website · ignores filters" else "Opened from the home screen widget",
+                                style = MaterialTheme.typography.bodyMedium,
+                                color = LocalHncColors.current.muted,
+                                modifier = Modifier.weight(1f),
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            PlainButton("Back to Study", { vm.act { setCardMode(CardMode.STUDY) } })
                         }
                     }
                     if (mode == CardMode.RATED) RatingFilterPicker(s.ratingFilter) { f -> vm.act { setRatingFilter(f) } }
-                    Tracker(deck.tracker)
+                    if (deck.usesRounds) Tracker(deck.tracker)
                     Flashcard(deck, vm)
                     DeckNavigation(deck, vm)
-                    ProgressBar(deck.progressFraction, Modifier.padding(top = 4.dp))
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                        Muted(deck.position)
-                        Muted(deck.progressLabel)
+                    if (deck.current != null) {
+                        ProgressBar(deck.progressFraction, Modifier.padding(top = 4.dp))
+                        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                            Muted(deck.position)
+                            Muted(deck.progressLabel)
+                        }
                     }
                     Muted("Tip: answer aloud before revealing. Swipe the card left or right to move between cards.")
                     Spacer(Modifier.height(8.dp))
@@ -137,12 +161,34 @@ private fun Flashcard(deck: DeckView, vm: AppViewModel) {
     val view = deck.current
     val mode = deck.mode
     if (view == null) {
-        EmptyState(
-            eyebrow = "Your revision set",
-            title = if (mode == CardMode.RATED) "No cards match this rating" else "No cards in this set",
-            body = "Choose another filter, or mark cards “Revisit” while studying.",
-            action = "Start studying" to { vm.act { setCardMode(CardMode.STUDY) } },
-        )
+        val toStudy = { vm.act { setCardMode(CardMode.STUDY) } }
+        when (mode) {
+            CardMode.DUE -> EmptyState(
+                eyebrow = "Spaced repetition",
+                title = "Nothing due. Nice work.",
+                body = deck.nextDue?.let { "Next due: ${formatWeekday(it)}" }
+                    ?: "Rate cards in Study and they’ll come back here when they’re due.",
+                action = "Study cards" to toStudy,
+            )
+            CardMode.STARRED -> EmptyState(
+                eyebrow = "Starred",
+                title = "No starred cards yet",
+                body = "Tap ☆ on any card to save it here.",
+                action = "Study cards" to toStudy,
+            )
+            CardMode.NEW, CardMode.CARD -> EmptyState(
+                eyebrow = "From the website",
+                title = "You’re up to date",
+                body = "You’ve seen every new or updated card.",
+                action = "Back to Study" to toStudy,
+            )
+            else -> EmptyState(
+                eyebrow = "Your revision set",
+                title = if (mode == CardMode.RATED) "No cards match this rating" else "No cards in this set",
+                body = "Choose another filter, or mark cards “Revisit” while studying.",
+                action = "Start studying" to toStudy,
+            )
+        }
         return
     }
     val card = view.card
@@ -184,13 +230,16 @@ private fun Flashcard(deck: DeckView, vm: AppViewModel) {
             .then(if (!deck.revealed) Modifier.clickable(onClickLabel = "Reveal answer") { vm.act { reveal(mode) } } else Modifier)
             .semantics {
                 customActions = listOfNotNull(
-                    CustomAccessibilityAction(if (deck.isLast) "Next round" else "Next card") { next(); true },
+                    CustomAccessibilityAction(if (!deck.isLast) "Next card" else if (deck.usesRounds) "Next round" else "Start over") { next(); true },
                     if (deck.index > 0) CustomAccessibilityAction("Previous card") { previous(); true } else null,
                 )
             },
         padding = 22.dp,
     ) {
-        MetaRow(view.tag, "${view.status} · #${card.id}", view.outcomes)
+        Row(verticalAlignment = Alignment.Top) {
+            Box(Modifier.weight(1f).padding(top = 12.dp)) { MetaRow(view.tag, "${view.status} · #${card.id}", view.outcomes) }
+            StarButton(view.starred, { vm.act { toggleStar(card.id) } })
+        }
         Text(
             card.q,
             style = MaterialTheme.typography.titleLarge,
@@ -220,6 +269,7 @@ private fun Flashcard(deck: DeckView, vm: AppViewModel) {
                 modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
             )
             ReferencesList(view.references)
+            NoteSection(view.note) { text -> vm.act { setNote(card.id, text) } }
             Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 PlainButton("Revisit", { vm.act { rate(mode, Rating.REVIEW) } }, Modifier.weight(1f))
                 SoftButton("Confident ✓", { vm.act { rate(mode, Rating.KNOWN) } }, Modifier.weight(1f))
@@ -239,7 +289,12 @@ private fun DeckNavigation(deck: DeckView, vm: AppViewModel) {
     ) {
         PlainButton("← Previous", { vm.act { move(deck.mode, -1) } }, Modifier.weight(1f), enabled = deck.index > 0)
         PlainButton(
-            if (deck.isLast) "Next round →" else "Next →",
+            when {
+                !deck.isLast -> "Next →"
+                deck.mode == CardMode.CARD -> "Back to Study →"
+                deck.usesRounds -> "Next round →"
+                else -> "Start over →"
+            },
             { vm.act { move(deck.mode, 1) } },
             Modifier.weight(1f),
         )

@@ -1,6 +1,6 @@
 # HNC Revision — iOS
 
-SwiftUI app (iOS 18+, iPhone and iPad) for the HNC Cyber Security revision site. The behaviour follows `../SPEC.md`.
+SwiftUI app (iOS 18+, iPhone and iPad) for the HNC Cyber Security revision site, with a home screen widget. The behaviour follows `../SPEC.md` (1.0 and the "Version 1.1" section). Current version: 1.1.0 (2).
 
 ## Project
 
@@ -11,12 +11,19 @@ cd ios
 xcodegen generate
 ```
 
-Build without a simulator:
+Build without a simulator (the plain system `PATH` avoids Homebrew tools breaking Xcode's copy steps; `-allowProvisioningUpdates` lets Xcode register the App Group and the widget's bundle id):
 
 ```sh
-xcodebuild build -scheme HNCRevision -destination 'generic/platform=iOS Simulator'
-xcodebuild build -scheme HNCRevision -destination 'generic/platform=iOS'
+PATH=/usr/bin:/bin:/usr/sbin:/sbin xcodebuild build -scheme HNCRevision -destination 'generic/platform=iOS Simulator'
+PATH=/usr/bin:/bin:/usr/sbin:/sbin xcodebuild build -scheme HNCRevision -destination 'generic/platform=iOS' -allowProvisioningUpdates
 ```
+
+Targets (both team `LQCQTAV3UW`, automatic signing, `MARKETING_VERSION` / `CURRENT_PROJECT_VERSION` set on each):
+
+- `HNCRevision` (`net.estopia.hncrevision`): the app. Embeds the widget.
+- `HNCRevisionWidget` (`net.estopia.hncrevision.widget`): WidgetKit extension, small and medium sizes.
+
+Both have the App Group `group.net.estopia.hncrevision`. XcodeGen writes `HNCRevision/Info.plist` (only the `hncrevision://` URL scheme and the version placeholders; everything else comes from `INFOPLIST_KEY_*`), `HNCRevisionWidget/Info.plist` (the extension point) and the two `.entitlements` files from `project.yml`, so change them there.
 
 ## Tests
 
@@ -36,10 +43,22 @@ The tests read the bundled data straight from `../shared/data/`.
   - `Models.swift`: units, cards, questions, coverage, VLSM exercises, and decoding them from the parsed scripts.
   - `Filters.swift`: unit / outcome / topic filtering, labels, references, `nextRound`.
   - `DataRepository.swift`: bundled copy, cached copy (`Caches/SiteData`), live fetch from the site (script URLs found in the page's HTML).
-  - `PersistedState.swift`, `RevisionStore.swift`: the app state (`@Observable`): decks, rounds, ratings, quiz scoring, settings, saved as one JSON value in `UserDefaults`.
+  - `PersistedState.swift`, `RevisionStore.swift`: the app state (`@Observable`): decks, rounds, ratings, quiz scoring, settings, saved as one JSON value in the App Group's `UserDefaults`. Every field decodes leniently (a bad or missing field takes its default), so 1.0 saves load in 1.1. The store takes injected `now`, `calendar` and `rng`.
+  - `Scheduler.swift`: `Day` (a local calendar day, saved as `yyyy-MM-dd`) and the Leitner boxes (intervals 1/3/7/14/30 days, due decks, the one-off migration of 1.0 ratings).
+  - `Activity.swift`: activity per day, streaks, and the daily reminder's text and 7-day plan.
+  - `MockExam.swift`: mock exam selection (incl. the Graded Unit Section 1 preset), attempts, scoring and history.
+  - `VLSMGenerator.swift`: IPv4 helpers, the VLSM solver (reproduces the site's exercises), generated questions, answer checking and subnetting drills.
+  - `ContentDiff.swift`: FNV-1a fingerprints of cards and questions to flag new or changed cards; `DeepLink` (`hncrevision://card/<id>`, `hncrevision://due`).
+  - `WidgetSnapshot.swift`: what the widget shows (today and the next 7 days, so it rolls over at midnight on its own), and the one-time move of the saved state from `UserDefaults.standard` into the App Group.
 - `HNCRevision/`: the SwiftUI app.
-  - `App/`: entry point, tab bar, in-app Safari for links, text-to-speech.
+  - `App/`: entry point, `AppDelegate` (owns the store, handles notification taps, refreshes the widget and reminders a second after saves), `ReminderScheduler` (`UNUserNotificationCenter`), tab bar, in-app Safari for links, text-to-speech.
   - `Theme/`: colours (light/dark), dyslexia reading mode, buttons and cards.
-  - `Views/`: Study (and Rated cards), Quiz, Browse, More (Outcomes, VLSM, Settings), shared filter bar.
+  - `Views/`: Study (Study · Due · Rated · Starred, plus the New and single-card decks), Quiz (Practice and `MockExamView`), Browse, More (Progress, Outcomes, VLSM with Exercises / Generate / Drills, Settings), shared filter bar, star button and notes.
   - `Assets.xcassets`: app icon (copy of `../shared/icon/icon-1024.png`).
+- `HNCRevisionWidget/`: the widget (reads `WidgetSnapshot` from the App Group; the medium size links to the card of the day).
 - The data scripts `cards.js`, `quiz.js` and `vlsm.js` are bundled straight from `../shared/data/` (referenced in `project.yml`). Refresh them with `../shared/update-data.sh`.
+
+## Links and notifications
+
+- `hncrevision://card/<id>` opens that card on its own in Study; `hncrevision://due` opens Study → Due. To try one on a booted simulator: `xcrun simctl openurl booted hncrevision://card/12`.
+- The daily reminder schedules the next 7 days as separate notifications (`daily-reminder-<yyyy-MM-dd>`) with each day's due count, and is rescheduled after every save. Tapping one opens Study → Due.

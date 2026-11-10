@@ -1,4 +1,10 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">HNC Revision</string>
+    <string name="widget_description">Cards due, your streak and the card of the day</string>
+    <string name="widget_card_of_day">Card of the day</string>
+    <string name="widget_preview_due">12 due</string>
+    <string name="widget_preview_streak">🔥 3-day streak</string>
+    <string name="widget_preview_meta">J0H934 · Encryption</string>
+    <string name="widget_preview_question">What is the difference between symmetric and asymmetric encryption?</string>
 </resources>

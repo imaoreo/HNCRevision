@@ -13,6 +13,7 @@ struct RootView: View {
             Tab("Study", systemImage: "rectangle.on.rectangle.angled", value: AppTab.study) {
                 NavigationStack { StudyScreen() }
             }
+            .badge(store.totalDueCount)
             Tab("Quiz", systemImage: "checklist", value: AppTab.quiz) {
                 NavigationStack { QuizScreen() }
             }

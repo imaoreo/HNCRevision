@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Status-bar icon: the app's diamond mark, cropped from ic_launcher_monochrome. -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="240"
+    android:viewportHeight="240">
+    <group android:translateX="-136" android:translateY="-136">
+        <path
+            android:fillColor="#FFFFFFFF"
+            android:fillType="evenOdd"
+            android:pathData="M256,149 L363,256 L256,363 L149,256 Z M205.45,254.5 L257,305.05 L307.53,254.53 L312.47,259.47 L257,314.95 L200.55,259.5 Z" />
+    </group>
+</vector>

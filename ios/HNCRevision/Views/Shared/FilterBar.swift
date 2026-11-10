@@ -56,12 +56,14 @@ struct FilterBar: View {
     }
 }
 
-/// "182 flashcards · 3 confident · 2 to revisit" for the current unit.
+/// "182 flashcards · 3 confident · 2 to revisit · 4 due" for the current unit, plus the streak.
 struct StatLine: View {
     @Environment(RevisionStore.self) private var store
 
     static func text(_ store: RevisionStore) -> String {
-        "\(store.unitCards.count) flashcards · \(store.confidentCount) confident · \(store.revisitCount) to revisit"
+        var text = "\(store.unitCards.count) flashcards · \(store.confidentCount) confident · \(store.revisitCount) to revisit · \(store.unitDueCount) due"
+        if store.currentStreak >= 1 { text += ". \(store.currentStreak)-day streak" }
+        return text
     }
 
     var body: some View {
@@ -77,6 +79,13 @@ struct StatLine: View {
         stat(store.unitCards.count, "flashcards")
         stat(store.confidentCount, "confident")
         stat(store.revisitCount, "to revisit")
+        stat(store.unitDueCount, "due")
+        if let streak = Activity.streakLabel(store.currentStreak) {
+            Text(streak)
+                .appFont(.caption, weight: .semibold)
+                .foregroundStyle(Palette.ink)
+                .fixedSize()
+        }
     }
 
     private func stat(_ value: Int, _ label: String) -> some View {

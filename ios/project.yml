@@ -42,12 +42,27 @@ targets:
         group: BundledData
     dependencies:
       - package: RevisionCore
+      - target: HNCRevisionWidget
+    # URL scheme for hncrevision://card/<id> (widget and links); everything else is generated from INFOPLIST_KEY_*.
+    info:
+      path: HNCRevision/Info.plist
+      properties:
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        CFBundleURLTypes:
+          - CFBundleURLName: net.estopia.hncrevision
+            CFBundleURLSchemes: [hncrevision]
+    # The App Group holds the saved state so the widget can read its snapshot.
+    entitlements:
+      path: HNCRevision/HNCRevision.entitlements
+      properties:
+        com.apple.security.application-groups: [group.net.estopia.hncrevision]
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: net.estopia.hncrevision
         PRODUCT_NAME: HNCRevision
-        MARKETING_VERSION: "1.0.0"
-        CURRENT_PROJECT_VERSION: "1"
+        MARKETING_VERSION: "1.1.0"
+        CURRENT_PROJECT_VERSION: "2"
         TARGETED_DEVICE_FAMILY: "1,2"
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
         INFOPLIST_KEY_CFBundleDisplayName: HNC Revision
@@ -58,6 +73,39 @@ targets:
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone: "UIInterfaceOrientationPortrait UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
         INFOPLIST_KEY_UISupportedInterfaceOrientations_iPad: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
         INFOPLIST_KEY_UIUserInterfaceStyle: Automatic
+
+  # Home screen widget: due count, streak and card of the day (reads the snapshot the app writes to the App Group).
+  HNCRevisionWidget:
+    type: app-extension
+    platform: iOS
+    sources:
+      - path: HNCRevisionWidget
+    dependencies:
+      - package: RevisionCore
+      - sdk: WidgetKit.framework
+      - sdk: SwiftUI.framework
+    info:
+      path: HNCRevisionWidget/Info.plist
+      properties:
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    entitlements:
+      path: HNCRevisionWidget/HNCRevisionWidget.entitlements
+      properties:
+        com.apple.security.application-groups: [group.net.estopia.hncrevision]
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: net.estopia.hncrevision.widget
+        PRODUCT_NAME: HNCRevisionWidget
+        MARKETING_VERSION: "1.1.0"
+        CURRENT_PROJECT_VERSION: "2"
+        TARGETED_DEVICE_FAMILY: "1,2"
+        INFOPLIST_KEY_CFBundleDisplayName: HNC Revision
+        INFOPLIST_KEY_ITSAppUsesNonExemptEncryption: NO
+        SKIP_INSTALL: YES
+        LD_RUNPATH_SEARCH_PATHS: "$(inherited) @executable_path/Frameworks @executable_path/../../Frameworks"
 
 schemes:
   HNCRevision:

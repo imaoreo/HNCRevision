@@ -27,6 +27,7 @@ import androidx.compose.material3.RadioButton
 import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.pulltorefresh.PullToRefreshBox
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -44,6 +45,7 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
+import net.estopia.hncrevision.logic.QuizMode
 import net.estopia.hncrevision.logic.QuizQuestionView
 import net.estopia.hncrevision.logic.QuizResults
 import net.estopia.hncrevision.logic.QuizView
@@ -55,12 +57,24 @@ fun QuizScreen(vm: AppViewModel) {
     val s = vm.snapshot
     val quiz = s.quiz
     val scroll = rememberScrollState()
-    LaunchedEffect(quiz.index, quiz.results != null, quiz.size) { scroll.animateScrollTo(0) }
+    val mock = s.mock
+    LaunchedEffect(quiz.index, quiz.results != null, quiz.size, s.quizMode, mock.run?.index, mock.result != null) { scroll.animateScrollTo(0) }
 
-    ScreenScaffold(title = "Quiz") {
+    ScreenScaffold(title = if (s.quizMode == QuizMode.MOCK) "Mock exam" else "Quiz") {
         PullToRefreshBox(isRefreshing = vm.refreshing, onRefresh = { vm.refresh(manual = true) }, modifier = Modifier.fillMaxSize()) {
             Column(Modifier.fillMaxSize().verticalScroll(scroll)) {
                 ContentWidth(Modifier.padding(vertical = 12.dp)) {
+                    Segmented(
+                        options = QuizMode.entries,
+                        selected = s.quizMode,
+                        label = { if (it == QuizMode.PRACTICE) "Practice" else "Mock exam" },
+                        onSelect = { m -> vm.act { setQuizMode(m) } },
+                    )
+                    if (s.quizMode == QuizMode.MOCK) {
+                        MockExam(mock, vm)
+                        Spacer(Modifier.height(8.dp))
+                        return@ContentWidth
+                    }
                     FilterBar(s.filters, s.stats, vm)
                     Tracker(quiz.tracker)
                     when {
@@ -96,7 +110,7 @@ private fun QuestionPanel(quiz: QuizView, vm: AppViewModel) {
         if (!q.checked) {
             PrimaryButton("Check answer", { vm.act { check() } }, enabled = q.choice != null)
         } else {
-            Feedback(q)
+            Feedback(q) { vm.act { toggleStar(q.question.cardId) } }
         }
     }
     FlowRow(
@@ -115,7 +129,7 @@ private fun QuestionPanel(quiz: QuizView, vm: AppViewModel) {
 }
 
 @Composable
-private fun OptionRow(q: QuizQuestionView, original: Int, letter: String, text: String, onSelect: () -> Unit) {
+internal fun OptionRow(q: QuizQuestionView, original: Int, letter: String, text: String, onSelect: () -> Unit) {
     val extra = LocalHncColors.current
     val selected = q.choice == original
     val isAnswer = original == q.question.answer
@@ -163,7 +177,7 @@ private fun OptionRow(q: QuizQuestionView, original: Int, letter: String, text: 
 }
 
 @Composable
-private fun Feedback(q: QuizQuestionView) {
+private fun Feedback(q: QuizQuestionView, onStar: () -> Unit) {
     val extra = LocalHncColors.current
     Surface(
         shape = ControlShape,
@@ -171,7 +185,10 @@ private fun Feedback(q: QuizQuestionView) {
         modifier = Modifier.fillMaxWidth().semantics { liveRegion = LiveRegionMode.Polite },
     ) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(if (q.isCorrect) "Correct" else "Review this one", style = MaterialTheme.typography.titleMedium)
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(if (q.isCorrect) "Correct" else "Review this one", style = MaterialTheme.typography.titleMedium, modifier = Modifier.weight(1f))
+                StarFlashcardButton(q.cardStarred, onStar)
+            }
             Text("Correct answer: ${q.question.options[q.question.answer]}", style = MaterialTheme.typography.bodyLarge)
             if (q.question.explanation.isNotBlank()) Text(q.question.explanation, style = MaterialTheme.typography.bodyLarge)
             ReferencesList(q.references)
@@ -202,11 +219,26 @@ private fun Results(r: QuizResults, vm: AppViewModel) {
             if (r.unanswered > 0) PlainButton("Continue unanswered", { vm.act { continueUnanswered() } })
         }
     }
-    r.items.forEach { ResultRow(it) }
+    r.items.forEach { item -> ResultRow(item) { vm.act { toggleStar(item.question.cardId) } } }
+}
+
+/** Stars the question's linked flashcard. */
+@Composable
+internal fun StarFlashcardButton(starred: Boolean, onToggle: () -> Unit) {
+    val extra = LocalHncColors.current
+    TextButton(onClick = onToggle, modifier = Modifier.heightIn(min = 48.dp)) {
+        Icon(
+            if (starred) AppIcons.Star else AppIcons.StarOutline,
+            contentDescription = null,
+            tint = if (starred) extra.star else extra.muted,
+        )
+        Spacer(Modifier.width(6.dp))
+        Text(if (starred) "Unstar flashcard" else "Star flashcard", color = MaterialTheme.colorScheme.onSurface)
+    }
 }
 
 @Composable
-private fun ResultRow(item: ResultItem) {
+internal fun ResultRow(item: ResultItem, onStar: () -> Unit) {
     var open by rememberSaveable(item.question.id) { mutableStateOf(false) }
     val extra = LocalHncColors.current
     Surface(
@@ -243,6 +275,7 @@ private fun ResultRow(item: ResultItem) {
                     if (item.question.explanation.isNotBlank()) Text(item.question.explanation, style = MaterialTheme.typography.bodyMedium)
                     ReferencesList(item.references)
                     Muted(item.footer)
+                    StarFlashcardButton(item.cardStarred, onStar)
                 }
             }
         }

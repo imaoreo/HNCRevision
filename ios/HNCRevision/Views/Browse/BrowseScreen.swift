@@ -38,7 +38,7 @@ struct BrowseScreen: View {
         .background(PaperBackground())
         .navigationTitle("Browse")
         .searchable(text: $query, placement: .navigationBarDrawer(displayMode: .always),
-                    prompt: "Search questions or answers…")
+                    prompt: "Search questions, answers or notes…")
         .onChange(of: store.filter) { query = "" }
         .onAppear { store.deactivateDecks() }
         .onDisappear { speaker.stop() }
@@ -48,7 +48,7 @@ struct BrowseScreen: View {
         let q = query.trimmingCharacters(in: .whitespaces).lowercased()
         let cards = store.selectedCards
         guard !q.isEmpty else { return cards }
-        return cards.filter { "\($0.q) \($0.a) \($0.topic) \($0.unit)".lowercased().contains(q) }
+        return cards.filter { "\($0.q) \($0.a) \($0.topic) \($0.unit) \(store.note(for: $0.id) ?? "")".lowercased().contains(q) }
     }
 }
 
@@ -66,6 +66,7 @@ struct BrowseRow: View {
                     .appFont(.body)
                     .textSelection(.enabled)
                     .fixedSize(horizontal: false, vertical: true)
+                NoteSection(cardId: card.id)
                 ReferencesView(references: store.data.references(for: card))
 
                 if !card.hint.isEmpty {
@@ -114,21 +115,44 @@ struct BrowseRow: View {
                     }
                 }
 
-                Text("\(card.unit) · \(card.topic) · \(outcomeLabel(unit: card.unit, outcomes: card.outcomes)) · Card \(card.id)")
-                    .appFont(.caption)
-                    .foregroundStyle(Palette.muted)
+                HStack(alignment: .center) {
+                    Text("\(card.unit) · \(card.topic) · \(outcomeLabel(unit: card.unit, outcomes: card.outcomes)) · Card \(card.id)")
+                        .appFont(.caption)
+                        .foregroundStyle(Palette.muted)
+                    Spacer(minLength: 8)
+                    StarButton(cardId: card.id)
+                }
             }
             .foregroundStyle(Palette.ink)
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(.top, 10)
         } label: {
-            Text(card.q)
-                .appFont(.body, weight: .semibold)
-                .foregroundStyle(Palette.ink)
-                .multilineTextAlignment(.leading)
-                .frame(maxWidth: .infinity, minHeight: 32, alignment: .leading)
+            HStack(alignment: .firstTextBaseline, spacing: 6) {
+                if store.isStarred(card.id) {
+                    Image(systemName: "star.fill")
+                        .font(.caption)
+                        .foregroundStyle(Palette.note)
+                        .accessibilityLabel("Starred")
+                }
+                Text(card.q)
+                    .appFont(.body, weight: .semibold)
+                    .foregroundStyle(Palette.ink)
+                    .multilineTextAlignment(.leading)
+                    .frame(maxWidth: .infinity, minHeight: 32, alignment: .leading)
+            }
         }
         .tint(Palette.ink)
         .cardStyle(radius: 12, padding: 16)
+        .contextMenu {
+            Button {
+                store.toggleStar(card.id)
+            } label: {
+                Label(store.isStarred(card.id) ? "Unstar card" : "Star card",
+                      systemImage: store.isStarred(card.id) ? "star.slash" : "star")
+            }
+        }
+        .accessibilityAction(named: store.isStarred(card.id) ? "Unstar card" : "Star card") {
+            store.toggleStar(card.id)
+        }
     }
 }

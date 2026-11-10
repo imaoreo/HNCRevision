@@ -10,6 +10,8 @@ import androidx.compose.foundation.layout.only
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.material3.Badge
+import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -28,6 +30,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.foundation.layout.RowScope
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
 import net.estopia.hncrevision.logic.Tab
@@ -45,7 +49,7 @@ fun HncApp(vm: AppViewModel) {
         contentWindowInsets = WindowInsets(0),
         bottomBar = {
             NavigationBar(containerColor = MaterialTheme.colorScheme.surfaceContainerLow) {
-                TabItem(Tab.STUDY, "Study", AppIcons.Study, tab) { vm.act { setTab(Tab.STUDY) } }
+                TabItem(Tab.STUDY, "Study", AppIcons.Study, tab, badge = vm.snapshot.dueAll) { vm.act { setTab(Tab.STUDY) } }
                 TabItem(Tab.QUIZ, "Quiz", AppIcons.Quiz, tab) { vm.act { setTab(Tab.QUIZ) } }
                 TabItem(Tab.BROWSE, "Browse", AppIcons.Search, tab) { vm.act { setTab(Tab.BROWSE) } }
                 TabItem(Tab.MORE, "More", AppIcons.More, tab) {
@@ -72,6 +76,7 @@ fun HncApp(vm: AppViewModel) {
                     MorePage.OUTCOMES -> OutcomesScreen(vm) { morePage = null }
                     MorePage.VLSM -> VlsmScreen(vm) { morePage = null }
                     MorePage.SETTINGS -> SettingsScreen(vm) { morePage = null }
+                    MorePage.PROGRESS -> ProgressScreen(vm) { morePage = null }
                 }
             }
         }
@@ -79,11 +84,30 @@ fun HncApp(vm: AppViewModel) {
 }
 
 @Composable
-private fun RowScope.TabItem(item: Tab, label: String, icon: androidx.compose.ui.graphics.vector.ImageVector, current: Tab, onClick: () -> Unit) {
+private fun RowScope.TabItem(
+    item: Tab,
+    label: String,
+    icon: androidx.compose.ui.graphics.vector.ImageVector,
+    current: Tab,
+    badge: Int = 0,
+    onClick: () -> Unit,
+) {
     NavigationBarItem(
         selected = item == current,
         onClick = onClick,
-        icon = { Icon(icon, contentDescription = null) },
+        icon = {
+            if (badge > 0) {
+                BadgedBox(badge = {
+                    Badge(
+                        containerColor = MaterialTheme.colorScheme.primary,
+                        contentColor = MaterialTheme.colorScheme.onPrimary,
+                        modifier = Modifier.clearAndSetSemantics { contentDescription = "$badge cards due" },
+                    ) { Text(if (badge > 99) "99+" else badge.toString()) }
+                }) { Icon(icon, contentDescription = null) }
+            } else {
+                Icon(icon, contentDescription = null)
+            }
+        },
         label = { Text(label) },
         colors = NavigationBarItemDefaults.colors(
             indicatorColor = MaterialTheme.colorScheme.secondaryContainer,

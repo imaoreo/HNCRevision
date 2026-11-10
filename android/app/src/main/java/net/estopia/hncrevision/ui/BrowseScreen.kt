@@ -53,7 +53,7 @@ fun BrowseScreen(vm: AppViewModel) {
     var query by rememberSaveable(s.filters.unit) { mutableStateOf("") }
     val needle = query.trim().lowercase()
     val rows = s.selected.filter { v ->
-        needle.isEmpty() || "${v.card.q} ${v.card.a} ${v.card.topic} ${v.card.unit}".lowercase().contains(needle)
+        needle.isEmpty() || "${v.card.q} ${v.card.a} ${v.card.topic} ${v.card.unit} ${v.note.orEmpty()}".lowercase().contains(needle)
     }
 
     DisposableEffect(Unit) { onDispose { vm.stopReading(pause = false) } }
@@ -72,7 +72,7 @@ fun BrowseScreen(vm: AppViewModel) {
                             value = query,
                             onValueChange = { query = it },
                             modifier = Modifier.fillMaxWidth(),
-                            placeholder = { Text("Search questions or answers…") },
+                            placeholder = { Text("Search questions, answers or notes…") },
                             label = { Text("Search flashcards") },
                             leadingIcon = { Icon(AppIcons.Search, contentDescription = null) },
                             trailingIcon = if (query.isNotEmpty()) {
@@ -119,21 +119,24 @@ private fun BrowseRow(v: CardView, vm: AppViewModel) {
         modifier = Modifier.fillMaxWidth(),
     ) {
         Column {
-            Row(
-                Modifier
-                    .fillMaxWidth()
-                    .clickable(onClickLabel = if (open) "Hide answer" else "Show answer") { open = !open }
-                    .heightIn(min = 48.dp)
-                    .padding(16.dp)
-                    .semantics { stateDescription = if (open) "Expanded" else "Collapsed" },
-                verticalAlignment = Alignment.Top,
-            ) {
-                Text(
-                    card.q,
-                    style = MaterialTheme.typography.titleMedium,
-                    modifier = Modifier.weight(1f).semantics { heading() },
-                )
-                Icon(if (open) AppIcons.ExpandLess else AppIcons.ExpandMore, contentDescription = null)
+            Row(verticalAlignment = Alignment.Top) {
+                Row(
+                    Modifier
+                        .weight(1f)
+                        .clickable(onClickLabel = if (open) "Hide answer" else "Show answer") { open = !open }
+                        .heightIn(min = 48.dp)
+                        .padding(start = 16.dp, top = 16.dp, bottom = 16.dp, end = 4.dp)
+                        .semantics { stateDescription = if (open) "Expanded" else "Collapsed" },
+                    verticalAlignment = Alignment.Top,
+                ) {
+                    Text(
+                        card.q,
+                        style = MaterialTheme.typography.titleMedium,
+                        modifier = Modifier.weight(1f).semantics { heading() },
+                    )
+                    Icon(if (open) AppIcons.ExpandLess else AppIcons.ExpandMore, contentDescription = null)
+                }
+                StarButton(v.starred, { vm.act { toggleStar(card.id) } }, Modifier.padding(top = 4.dp, end = 4.dp))
             }
             AnimatedVisibility(open) {
                 Column(
@@ -146,6 +149,7 @@ private fun BrowseRow(v: CardView, vm: AppViewModel) {
                         Text(if (hint) "Hide hint" else "Show hint")
                     }
                     if (hint) Text(card.hint.ifBlank { "No hint for this card." }, style = MaterialTheme.typography.bodyMedium)
+                    NoteSection(v.note) { text -> vm.act { setNote(card.id, text) } }
                     Muted("${card.unit} · ${card.topic} · ${v.outcomes} · Card ${card.id}")
                     if (vm.readAloud) {
                         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {

@@ -3,29 +3,27 @@ import SwiftUI
 
 @main
 struct HNCRevisionApp: App {
-    @State private var store: RevisionStore
+    @UIApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @State private var speaker = Speaker()
     @Environment(\.scenePhase) private var scenePhase
-
-    init() {
-        let repository = DataRepository(
-            bundledDirectory: Bundle.main.resourceURL ?? Bundle.main.bundleURL,
-            cacheDirectory: DataRepository.defaultCacheDirectory
-        )
-        _store = State(initialValue: RevisionStore(repository: repository))
-    }
 
     var body: some Scene {
         WindowGroup {
             RootView()
-                .environment(store)
+                .environment(appDelegate.store)
+                .environment(appDelegate.reminders)
                 .environment(speaker)
-                .task { await store.refreshIfStale() }
+                .onOpenURL { url in
+                    speaker.stop()
+                    appDelegate.store.open(url)
+                }
+                .task { await appDelegate.store.refreshIfStale() }
         }
         .onChange(of: scenePhase) { _, phase in
             switch phase {
             case .active:
-                Task { await store.refreshIfStale() }
+                Task { await appDelegate.store.refreshIfStale() }
+                Task { await appDelegate.reminders.appBecameActive(appDelegate.store) }
             case .background:
                 speaker.stop()
             default:

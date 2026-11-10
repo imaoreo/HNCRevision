@@ -1,34 +1,28 @@
 import RevisionCore
 import SwiftUI
 
-/// Multiple-choice practice for the current filter.
+/// Multiple-choice practice for the current filter, and mock exams.
 struct QuizScreen: View {
     @Environment(RevisionStore.self) private var store
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     var body: some View {
+        @Bindable var store = store
         ScrollViewReader { proxy in
             ScrollView {
                 VStack(alignment: .leading, spacing: 14) {
                     Color.clear.frame(height: 0).id("top")
-                    FilterBar()
-                    tracker
+                    Picker("Quiz type", selection: $store.quizMode) {
+                        Text("Practice").tag(QuizMode.practice)
+                        Text("Mock exam").tag(QuizMode.mock)
+                    }
+                    .pickerStyle(.segmented)
+                    .accessibilityLabel("Quiz type")
 
-                    if store.quizDeck.ids.isEmpty {
-                        EmptyStateCard(
-                            title: "No MCQs for this filter",
-                            message: "Choose another outcome or topic. Graded Unit sections 2 and 3 require written responses; use the Outcomes tab for practice tasks."
-                        )
-                    } else if store.quizDeck.done {
-                        QuizResultsView()
-                    } else if let question = store.currentQuestion {
-                        header
-                        QuestionCard(question: question)
-                            .id(question.id)
-                        navigation
-                        Text("Choose one answer, then check it. Your first checked answer is scored for this attempt. Quiz results are saved on this device separately from flashcard ratings.")
-                            .appFont(.footnote)
-                            .foregroundStyle(Palette.muted)
+                    if store.quizMode == .mock {
+                        MockExamView(scrollToTop: { withAnimation(reduceMotion ? nil : .default) { proxy.scrollTo("top", anchor: .top) } })
+                    } else {
+                        practice
                     }
                 }
                 .padding(16)
@@ -36,7 +30,7 @@ struct QuizScreen: View {
             }
             .refreshable { await store.refresh() }
             .background(PaperBackground())
-            .navigationTitle("Quiz")
+            .navigationTitle(store.quizMode == .mock ? "Mock exam" : "Quiz")
             .onChange(of: store.quizDeck.index) {
                 withAnimation(reduceMotion ? nil : .default) { proxy.scrollTo("top", anchor: .top) }
             }
@@ -44,7 +38,39 @@ struct QuizScreen: View {
                 withAnimation(reduceMotion ? nil : .default) { proxy.scrollTo("top", anchor: .top) }
             }
         }
-        .onAppear { store.activateQuiz() }
+        .onAppear(perform: activate)
+        .onChange(of: store.quizMode) { activate() }
+    }
+
+    private func activate() {
+        if store.quizMode == .practice {
+            store.activateQuiz()
+        } else {
+            store.deactivateDecks()
+            store.checkMockTimer()
+        }
+    }
+
+    @ViewBuilder private var practice: some View {
+        FilterBar()
+        tracker
+
+        if store.quizDeck.ids.isEmpty {
+            EmptyStateCard(
+                title: "No MCQs for this filter",
+                message: "Choose another outcome or topic. Graded Unit sections 2 and 3 require written responses; use the Outcomes tab for practice tasks."
+            )
+        } else if store.quizDeck.done {
+            QuizResultsView()
+        } else if let question = store.currentQuestion {
+            header
+            QuestionCard(question: question)
+                .id(question.id)
+            navigation
+            Text("Choose one answer, then check it. Your first checked answer is scored for this attempt. Quiz results are saved on this device separately from flashcard ratings.")
+                .appFont(.footnote)
+                .foregroundStyle(Palette.muted)
+        }
     }
 
     private var tracker: some View {
@@ -173,6 +199,9 @@ struct QuestionCard: View {
                 Text("Related flashcard: \(cardId). This answer supports revision; it does not demonstrate practical competence.")
                     .appFont(.footnote)
                     .foregroundStyle(Palette.muted)
+                if store.data.cardsById[cardId] != nil {
+                    StarButton(cardId: cardId, related: true)
+                }
             }
         }
         .foregroundStyle(Palette.ink)
@@ -301,23 +330,29 @@ struct QuizResultsView: View {
             .cardStyle(padding: 22)
 
             ForEach(answered) { question in
-                ResultRow(question: question)
+                ResultRow(question: question, choice: store.response(for: question.id)?.choice)
             }
         }
     }
 }
 
+/// One answered question in Practice or mock-exam results: ✓ / ↺, your answer, the correct one, explanation, references.
 struct ResultRow: View {
     let question: Question
+    /// The chosen option (an index into `options`), or nil when not answered.
+    let choice: Int?
     @Environment(RevisionStore.self) private var store
     @State private var expanded = false
 
     var body: some View {
-        let choice = store.response(for: question.id)?.choice ?? 0
         let correct = choice == question.answer
         DisclosureGroup(isExpanded: $expanded) {
             VStack(alignment: .leading, spacing: 8) {
-                Text("Your answer: \(question.options[safe: choice] ?? "")").appFont(.body)
+                if let choice, let text = question.options[safe: choice] {
+                    Text("Your answer: \(text)").appFont(.body)
+                } else {
+                    Text("Not answered").appFont(.body, weight: .medium)
+                }
                 Text("\(Text("Correct answer: ").bold())\(question.options[question.answer])").appFont(.body)
                 if !question.explanation.isEmpty {
                     Text(question.explanation).appFont(.body)
@@ -326,6 +361,9 @@ struct ResultRow: View {
                 Text(footer)
                     .appFont(.caption)
                     .foregroundStyle(Palette.muted)
+                if let cardId = question.cardId, store.data.cardsById[cardId] != nil {
+                    StarButton(cardId: cardId, related: true)
+                }
             }
             .foregroundStyle(Palette.ink)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -335,7 +373,7 @@ struct ResultRow: View {
                 Text(correct ? "✓" : "↺")
                     .fontWeight(.bold)
                     .foregroundStyle(correct ? Palette.correctBorder : Palette.wrongBorder)
-                    .accessibilityLabel(correct ? "Correct" : "To revise")
+                    .accessibilityLabel(correct ? "Correct" : (choice == nil ? "Not answered" : "To revise"))
                 Text(question.q)
                     .appFont(.body, weight: .medium)
                     .foregroundStyle(Palette.ink)

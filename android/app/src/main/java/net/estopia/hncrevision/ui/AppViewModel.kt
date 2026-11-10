@@ -4,42 +4,40 @@ import android.app.Application
 import android.content.Context
 import android.speech.tts.TextToSpeech
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
-import androidx.core.content.edit
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import net.estopia.hncrevision.data.DataRepository
 import net.estopia.hncrevision.data.DataSource
-import net.estopia.hncrevision.logic.KeyValueStore
+import net.estopia.hncrevision.data.VlsmExercise
+import net.estopia.hncrevision.logic.DrillQuestion
 import net.estopia.hncrevision.logic.ProgressStore
+import net.estopia.hncrevision.logic.ReminderSettings
 import net.estopia.hncrevision.logic.RevisionEngine
 import net.estopia.hncrevision.logic.Snapshot
-import java.io.File
+import net.estopia.hncrevision.logic.VlsmChecker
+import net.estopia.hncrevision.logic.VlsmDifficulty
+import net.estopia.hncrevision.logic.VlsmDrills
+import net.estopia.hncrevision.logic.VlsmGenerator
+import net.estopia.hncrevision.logic.WidgetSnapshot
+import net.estopia.hncrevision.system.AppStorage
+import net.estopia.hncrevision.system.HomeWidgets
+import net.estopia.hncrevision.system.Reminders
 import java.util.Locale
+import kotlin.random.Random
 
 enum class RefreshOutcome { UPDATED, FAILED }
 
 class AppViewModel(app: Application) : AndroidViewModel(app) {
 
-    private val prefs = app.getSharedPreferences("hnc-revision", Context.MODE_PRIVATE)
-    private val progressStore = ProgressStore(object : KeyValueStore {
-        override fun get(key: String): String? = prefs.getString(key, null)
-        override fun put(key: String, value: String?) = prefs.edit { if (value == null) remove(key) else putString(key, value) }
-    })
-
-    private val repository = DataRepository(
-        cacheDir = File(app.filesDir, "live-data"),
-        bundled = {
-            DataRepository.FILES.associateWith { name ->
-                app.assets.open(name).use { it.readBytes().toString(Charsets.UTF_8) }
-            }
-        },
-    )
+    private val progressStore = AppStorage.progressStore(app)
+    private val repository = AppStorage.repository(app)
 
     private val initial = repository.loadInitial()
     private val engine = RevisionEngine(initial.data, progressStore)
@@ -59,19 +57,48 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         private set
     var dyslexiaReading by mutableStateOf(progressStore.getFlag(ProgressStore.DYSLEXIA))
         private set
+    var reminder by mutableStateOf(progressStore.loadReminder())
+        private set
 
     val vlsmWorking = mutableStateMapOf<Int, String>().apply { putAll(progressStore.loadVlsmWorking()) }
 
-    /** Runs an engine action and publishes a fresh snapshot for the UI. */
+    private var widget: WidgetSnapshot? = progressStore.loadWidgetSnapshot()
+
+    init {
+        Reminders.createChannel(app)
+        Reminders.sync(app)
+        HomeWidgets.armMidnight(app)
+        updateWidget()
+    }
+
+    /** Runs an engine action and publishes a fresh snapshot for the UI (and the widget). */
     fun act(action: RevisionEngine.() -> Unit) {
         engine.action()
-        snapshot = engine.snapshot()
+        publish()
     }
+
+    private fun publish() {
+        snapshot = engine.snapshot()
+        updateWidget()
+    }
+
+    /** Saves the widget snapshot and redraws widgets when what they show has changed. */
+    private fun updateWidget() {
+        val next = engine.widgetSnapshot()
+        if (next.sameContent(widget)) return
+        widget = next
+        progressStore.saveWidgetSnapshot(next)
+        HomeWidgets.push(getApplication(), next)
+    }
+
+    fun openCard(id: Int) = act { openCard(id) }
+    fun openDue() = act { openDue() }
 
     // region Data refresh
 
-    /** Called on every resume: refreshes when the last check was over 30 minutes ago. */
+    /** Called on every resume: picks up a new day, and refreshes when the last check was over 30 minutes ago. */
     fun onResume() {
+        act { refreshDay() }
         if (System.currentTimeMillis() - lastCheck > REFRESH_INTERVAL_MS) refresh(manual = false)
     }
 
@@ -84,7 +111,7 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
             lastCheck = System.currentTimeMillis()
             if (result != null) {
                 engine.replaceData(result.data)
-                snapshot = engine.snapshot()
+                publish()
                 source = result.source
             }
             if (manual) manualRefreshOutcome = if (result != null) RefreshOutcome.UPDATED else RefreshOutcome.FAILED
@@ -108,12 +135,96 @@ class AppViewModel(app: Application) : AndroidViewModel(app) {
         progressStore.setFlag(ProgressStore.DYSLEXIA, on)
     }
 
+    fun updateReminder(settings: ReminderSettings) {
+        reminder = settings
+        progressStore.saveReminder(settings)
+        Reminders.sync(getApplication())
+    }
+
     fun setVlsmWorking(index: Int, text: String) {
         vlsmWorking[index] = text
         progressStore.saveVlsmWorking(vlsmWorking.toMap())
     }
 
-    fun resetProgress() = act { resetProgress() }
+    fun resetProgress(starsAndNotes: Boolean) = act { resetProgress(starsAndNotes) }
+
+    // endregion
+
+    // region VLSM generator and drills (kept in memory; only the best drill score is saved)
+
+    private val random = Random.Default
+
+    var vlsmDifficulty by mutableStateOf(VlsmDifficulty.EASY)
+        private set
+    var generated by mutableStateOf<VlsmExercise?>(null)
+        private set
+    /** Typed answers per LAN (solver order) × 5 fields. */
+    val generatedAnswers = mutableStateListOf<List<String>>()
+    var generatedChecked by mutableStateOf(false)
+        private set
+    var generatedWorking by mutableStateOf("")
+
+    fun ensureGenerated() {
+        if (generated == null) newGenerated(vlsmDifficulty)
+    }
+
+    fun newGenerated(difficulty: VlsmDifficulty = vlsmDifficulty) {
+        vlsmDifficulty = difficulty
+        val e = VlsmGenerator.generate(difficulty, random)
+        generated = e
+        generatedAnswers.clear()
+        generatedAnswers.addAll(e.rows.map { List(VlsmChecker.FIELDS.size) { "" } })
+        generatedChecked = false
+        generatedWorking = ""
+    }
+
+    fun setGeneratedAnswer(row: Int, field: Int, text: String) {
+        val current = generatedAnswers.getOrNull(row) ?: return
+        generatedAnswers[row] = current.toMutableList().also { it[field] = text }
+        generatedChecked = false
+    }
+
+    fun checkGenerated() {
+        generatedChecked = true
+    }
+
+    var drillRound by mutableStateOf(VlsmDrills.round(random))
+        private set
+    var drillIndex by mutableIntStateOf(0)
+        private set
+    var drillInput by mutableStateOf("")
+    /** Per question: null until checked, then right or wrong. */
+    val drillResults = mutableStateListOf<Boolean?>().apply { addAll(List(VlsmDrills.ROUND_SIZE) { null }) }
+    var drillBest by mutableIntStateOf(progressStore.getInt(ProgressStore.DRILL_BEST))
+        private set
+
+    val drillQuestion: DrillQuestion? get() = drillRound.getOrNull(drillIndex)
+    val drillDone get() = drillIndex >= drillRound.size
+    val drillScore get() = drillResults.count { it == true }
+
+    fun checkDrill() {
+        val q = drillQuestion ?: return
+        if (drillResults[drillIndex] != null || drillInput.isBlank()) return
+        drillResults[drillIndex] = VlsmDrills.isCorrect(q, drillInput)
+    }
+
+    fun nextDrill() {
+        if (drillResults.getOrNull(drillIndex) == null) return
+        drillIndex++
+        drillInput = ""
+        if (drillDone && drillScore > drillBest) {
+            drillBest = drillScore
+            progressStore.setInt(ProgressStore.DRILL_BEST, drillBest)
+        }
+    }
+
+    fun newDrillRound() {
+        drillRound = VlsmDrills.round(random)
+        drillIndex = 0
+        drillInput = ""
+        drillResults.clear()
+        drillResults.addAll(List(drillRound.size) { null })
+    }
 
     // endregion
 

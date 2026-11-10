@@ -1,30 +1,39 @@
 import RevisionCore
 import SwiftUI
 
-/// Flashcards: Study (every card in the filter) and Rated cards (only rated ones).
+/// Flashcards: Study (every card in the filter), Due (spaced repetition), Rated cards, Starred, plus the
+/// New (changed on the website) and single-card (widget / link) decks.
 struct StudyScreen: View {
     @Environment(RevisionStore.self) private var store
     @Environment(Speaker.self) private var speaker
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @State private var direction: Int = 1
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 14) {
-                Picker("Cards", selection: modeBinding) {
-                    Text("Study").tag(CardMode.study)
-                    Text("Rated cards").tag(CardMode.review)
+                if CardMode.pickerModes.contains(store.cardMode) {
+                    modePicker
+                } else {
+                    specialDeckHeader
                 }
-                .pickerStyle(.segmented)
-                .accessibilityLabel("Card set")
 
-                FilterBar()
+                if !store.newCards.isEmpty && store.cardMode != .new {
+                    NewContentBanner()
+                }
+
+                if store.cardMode != .new && store.cardMode != .single {
+                    FilterBar()
+                }
 
                 if store.cardMode == .review {
                     ratingFilterRow
                 }
 
-                tracker
+                if store.cardMode.usesRounds {
+                    tracker
+                }
 
                 if let card = store.currentCard {
                     FlashcardView(card: card, onSwipe: go)
@@ -33,13 +42,7 @@ struct StudyScreen: View {
                     navigationRow
                     progress
                 } else {
-                    EmptyStateCard(
-                        eyebrow: "Your revision set",
-                        title: store.cardMode == .review ? "No cards match this rating" : "No cards in this set",
-                        message: "Choose another filter, or mark cards “Revisit” while studying.",
-                        actionTitle: "Start studying",
-                        action: { store.activateCards(.study) }
-                    )
+                    emptyState
                     progress
                 }
             }
@@ -48,7 +51,7 @@ struct StudyScreen: View {
         }
         .refreshable { await store.refresh() }
         .background(PaperBackground())
-        .navigationTitle(store.cardMode == .review ? "Rated cards" : "Study")
+        .navigationTitle(title)
         .toolbar {
             ToolbarItemGroup(placement: .topBarTrailing) {
                 Button {
@@ -70,6 +73,110 @@ struct StudyScreen: View {
         }
         .onAppear { store.activateCards(store.cardMode) }
         .onDisappear { speaker.stop() }
+    }
+
+    private var title: String {
+        switch store.cardMode {
+        case .study: return "Study"
+        case .due: return "Due"
+        case .review: return "Rated cards"
+        case .starred: return "Starred"
+        case .new: return "New cards"
+        case .single: return "Flashcard"
+        }
+    }
+
+    @ViewBuilder private var modePicker: some View {
+        let picker = Picker("Cards", selection: modeBinding) {
+            Text("Study").tag(CardMode.study)
+            Text("Due").tag(CardMode.due)
+            Text("Rated").tag(CardMode.review)
+            Text("Starred").tag(CardMode.starred)
+        }
+        .accessibilityLabel("Card set")
+        if dynamicTypeSize.isAccessibilitySize {
+            // Four segments don't fit at the largest text sizes.
+            HStack {
+                Text("Cards").appFont(.subheadline, weight: .medium)
+                Spacer()
+                picker.pickerStyle(.menu).tint(Palette.link)
+            }
+            .foregroundStyle(Palette.ink)
+            .cardStyle(radius: 12, padding: 12)
+        } else {
+            picker.pickerStyle(.segmented)
+        }
+    }
+
+    /// For the New and single-card decks, which aren't in the segmented control.
+    private var specialDeckHeader: some View {
+        HStack(alignment: .center, spacing: 12) {
+            VStack(alignment: .leading, spacing: 2) {
+                Eyebrow(store.cardMode == .new ? "From the website" : "Opened from a link")
+                Text(store.cardMode == .new ? "New or updated cards" : "One flashcard")
+                    .appFont(.headline)
+                    .foregroundStyle(Palette.ink)
+            }
+            .accessibilityElement(children: .combine)
+            Spacer(minLength: 8)
+            Button("Back to Study") {
+                speaker.stop()
+                store.activateCards(.study)
+            }
+            .buttonStyle(.appPlain)
+        }
+        .cardStyle(radius: 12, padding: 12)
+    }
+
+    @ViewBuilder private var emptyState: some View {
+        switch store.cardMode {
+        case .due:
+            EmptyStateCard(
+                eyebrow: "Spaced repetition",
+                title: "Nothing due. Nice work.",
+                message: store.nextDueDay.map { "Next due: \(longDate($0))" }
+                    ?? "Rate cards in Study and they’ll come back here when it’s time to review them.",
+                actionTitle: "Study",
+                action: { store.activateCards(.study) }
+            )
+        case .starred:
+            EmptyStateCard(
+                eyebrow: "Your revision set",
+                title: "No starred cards yet",
+                message: "Tap ☆ on any card to save it here.",
+                actionTitle: "Study",
+                action: { store.activateCards(.study) }
+            )
+        case .new:
+            EmptyStateCard(
+                eyebrow: "From the website",
+                title: "You’re up to date",
+                message: "You’ve seen every new or updated card.",
+                actionTitle: "Back to Study",
+                action: { store.activateCards(.study) }
+            )
+        default:
+            EmptyStateCard(
+                eyebrow: "Your revision set",
+                title: store.cardMode == .review ? "No cards match this rating" : "No cards in this set",
+                message: "Choose another filter, or mark cards “Revisit” while studying.",
+                actionTitle: "Start studying",
+                action: { store.activateCards(.study) }
+            )
+        }
+    }
+
+    private func longDate(_ day: Day) -> String {
+        if day == store.today.adding(days: 1) { return "tomorrow" }
+        return day.startDate(in: .current).formatted(.dateTime.weekday(.wide).day().month(.wide))
+    }
+
+    private var lastCardLabel: String {
+        switch store.cardMode {
+        case .due, .new: return "From the top →"
+        case .single: return "Back to Study →"
+        default: return "Next round →"
+        }
     }
 
     private var modeBinding: Binding<CardMode> {
@@ -140,13 +247,13 @@ struct StudyScreen: View {
                 go(1)
             } label: {
                 if store.isLastCard {
-                    Text("Next round →")
+                    Text(lastCardLabel)
                 } else {
                     Image(systemName: "arrow.right").frame(minWidth: 24)
                 }
             }
             .buttonStyle(.appPlain)
-            .accessibilityLabel(store.isLastCard ? "Next round" : "Next card")
+            .accessibilityLabel(store.isLastCard ? String(lastCardLabel.dropLast(2)) : "Next card")
             .keyboardShortcut(.rightArrow, modifiers: [])
         }
     }
@@ -238,6 +345,10 @@ struct FlashcardView: View {
         }
     }
 
+    private var confidentInterval: Int {
+        Scheduler.interval(box: min((store.schedule(for: card.id)?.box ?? 0) + 1, Scheduler.maxBox))
+    }
+
     private var currentSpeech: String {
         if revealed { return card.a }
         return showHint ? card.hint : card.q
@@ -245,17 +356,22 @@ struct FlashcardView: View {
 
     private var meta: some View {
         VStack(alignment: .leading, spacing: 6) {
-            HStack(alignment: .center, spacing: 8) {
-                Tag(text: "\(card.unit) · \(card.topic)")
+            HStack(alignment: .top, spacing: 8) {
+                VStack(alignment: .leading, spacing: 6) {
+                    Tag(text: "\(card.unit) · \(card.topic)")
+                    Text("\(store.statusLabel(for: card.id)) · #\(card.id)   \(outcomeLabel(unit: card.unit, outcomes: card.outcomes))".uppercased())
+                        .tracking(0.6)
+                        .appFont(.caption2, weight: .medium)
+                        .foregroundStyle(Palette.muted)
+                }
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel("\(card.unit), \(card.topic). \(store.statusLabel(for: card.id)). Card \(card.id). \(outcomeLabel(unit: card.unit, outcomes: card.outcomes))")
                 Spacer(minLength: 0)
+                StarButton(cardId: card.id)
+                    .padding(.top, -10)
+                    .padding(.trailing, -10)
             }
-            Text("\(store.statusLabel(for: card.id)) · #\(card.id)   \(outcomeLabel(unit: card.unit, outcomes: card.outcomes))".uppercased())
-                .tracking(0.6)
-                .appFont(.caption2, weight: .medium)
-                .foregroundStyle(Palette.muted)
         }
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(card.unit), \(card.topic). \(store.statusLabel(for: card.id)). Card \(card.id). \(outcomeLabel(unit: card.unit, outcomes: card.outcomes))")
     }
 
     @ViewBuilder private var unrevealed: some View {
@@ -300,6 +416,7 @@ struct FlashcardView: View {
             .fixedSize(horizontal: false, vertical: true)
             .textSelection(.enabled)
             .accessibilityLabel("Answer: \(card.a)")
+        NoteSection(cardId: card.id)
         ReferencesView(references: store.data.references(for: card))
         FlowButtons {
             Button {
@@ -309,7 +426,7 @@ struct FlashcardView: View {
             }
             .buttonStyle(.app(.plain, expand: true))
             .keyboardShortcut("1", modifiers: [])
-            .accessibilityHint("Rates this card Revisit and moves to the next")
+            .accessibilityHint("Rates this card Revisit and moves to the next. It comes back tomorrow.")
 
             Button {
                 withAnimation(.snappy(duration: 0.25)) { store.rate(.known) }
@@ -319,7 +436,51 @@ struct FlashcardView: View {
             .buttonStyle(.app(.soft, expand: true))
             .keyboardShortcut("2", modifiers: [])
             .accessibilityLabel("Confident")
-            .accessibilityHint("Rates this card Confident and moves to the next")
+            .accessibilityHint("Rates this card Confident and moves to the next. It comes back in \(confidentInterval) days.")
         }
+    }
+}
+
+/// "N new or updated cards from the website" with Study them and a close button.
+struct NewContentBanner: View {
+    @Environment(RevisionStore.self) private var store
+
+    var body: some View {
+        let count = store.newCards.count
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: "sparkles")
+                .font(.title3)
+                .foregroundStyle(Palette.ink)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 10) {
+                Text(count == 1 ? "1 new or updated card from the website" : "\(count) new or updated cards from the website")
+                    .appFont(.subheadline, weight: .semibold)
+                    .foregroundStyle(Palette.ink)
+                    .fixedSize(horizontal: false, vertical: true)
+                Button("Study them") { store.studyNewCards() }
+                    .buttonStyle(.appSoft)
+                    .accessibilityHint("Shows the new and updated cards")
+            }
+            Spacer(minLength: 0)
+            Button {
+                withAnimation { store.dismissNewCards() }
+            } label: {
+                Image(systemName: "xmark")
+                    .font(.body.weight(.semibold))
+                    .foregroundStyle(Palette.muted)
+                    .frame(width: 44, height: 44)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .padding(.top, -10)
+            .padding(.trailing, -10)
+            .accessibilityLabel("Dismiss")
+            .accessibilityHint("Hides this message until the website changes again")
+        }
+        .padding(14)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(Palette.tagFill, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .overlay(RoundedRectangle(cornerRadius: 16, style: .continuous).strokeBorder(Palette.line, lineWidth: 1))
+        .accessibilityElement(children: .contain)
     }
 }

@@ -15,6 +15,11 @@ struct MoreScreen: View {
                 }
                 .accessibilityHint("Opens Study showing rated cards")
                 NavigationLink {
+                    ProgressScreen()
+                } label: {
+                    row("Progress", "Streaks, activity and progress per unit", "chart.bar.xaxis")
+                }
+                NavigationLink {
                     OutcomesScreen()
                 } label: {
                     row("Outcomes", "How your revision matches the units", "list.bullet.clipboard")
@@ -22,7 +27,7 @@ struct MoreScreen: View {
                 NavigationLink {
                     VLSMScreen()
                 } label: {
-                    row("VLSM practice", "IPv4 subnetting exercises", "network")
+                    row("VLSM practice", "IPv4 subnetting exercises, generated questions and drills", "network")
                 }
             }
             .listRowBackground(ThemeColors(dyslexia: dyslexia).surface)
@@ -30,7 +35,7 @@ struct MoreScreen: View {
                 NavigationLink {
                     SettingsScreen()
                 } label: {
-                    row("Settings", "Reading aloud, dyslexia mode, data and progress", "gearshape")
+                    row("Settings", "Reminders, reading aloud, dyslexia mode, data and progress", "gearshape")
                 }
             }
             .listRowBackground(ThemeColors(dyslexia: dyslexia).surface)

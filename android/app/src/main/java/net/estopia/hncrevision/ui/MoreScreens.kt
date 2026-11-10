@@ -1,6 +1,22 @@
 package net.estopia.hncrevision.ui
 
+import android.Manifest
+import android.content.ActivityNotFoundException
+import android.content.Context
+import android.content.Intent
+import android.content.pm.PackageManager
+import android.os.Build
+import android.provider.Settings
 import android.text.format.DateUtils
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
+import androidx.core.net.toUri
+import androidx.compose.material3.Checkbox
+import androidx.compose.material3.TimePicker
+import androidx.compose.material3.rememberTimePickerState
+import androidx.compose.ui.platform.LocalContext
+import net.estopia.hncrevision.system.Reminders
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -72,7 +88,7 @@ import net.estopia.hncrevision.logic.Tab
 import java.text.DateFormat
 import java.util.Date
 
-enum class MorePage(val title: String) { OUTCOMES("Outcomes"), VLSM("VLSM practice"), SETTINGS("Settings") }
+enum class MorePage(val title: String) { OUTCOMES("Outcomes"), VLSM("VLSM practice"), SETTINGS("Settings"), PROGRESS("Progress") }
 
 @Composable
 fun MoreMenu(vm: AppViewModel, open: (MorePage) -> Unit) {
@@ -81,15 +97,21 @@ fun MoreMenu(vm: AppViewModel, open: (MorePage) -> Unit) {
             ContentWidth(Modifier.padding(vertical = 12.dp)) {
                 HncCard(padding = 0.dp) {
                     Column {
+                        MoreRow("Progress", "Streaks, daily activity and progress by unit", AppIcons.Progress) { open(MorePage.PROGRESS) }
+                        Divider()
                         MoreRow("Rated cards", "Flashcards you've marked Confident or Revisit", AppIcons.Rated) {
                             vm.act { setCardMode(CardMode.RATED); setTab(Tab.STUDY) }
                         }
                         Divider()
+                        MoreRow("Starred cards", "Flashcards you've starred", AppIcons.Star) {
+                            vm.act { setCardMode(CardMode.STARRED); setTab(Tab.STUDY) }
+                        }
+                        Divider()
                         MoreRow("Outcomes", "How your revision matches each unit", AppIcons.Outcomes) { open(MorePage.OUTCOMES) }
                         Divider()
-                        MoreRow("VLSM practice", "IPv4 subnetting exercises with worked answers", AppIcons.Network) { open(MorePage.VLSM) }
+                        MoreRow("VLSM practice", "Subnetting exercises, generated questions and drills", AppIcons.Network) { open(MorePage.VLSM) }
                         Divider()
-                        MoreRow("Settings", "Read aloud, reading mode, data updates, reset", AppIcons.Settings) { open(MorePage.SETTINGS) }
+                        MoreRow("Settings", "Reminder, read aloud, reading mode, data updates, reset", AppIcons.Settings) { open(MorePage.SETTINGS) }
                     }
                 }
                 Muted("Original revision prompts; use alongside lecturer materials.")
@@ -197,9 +219,30 @@ fun OutcomesScreen(vm: AppViewModel, onBack: () -> Unit) {
 
 // region VLSM
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+enum class VlsmTab(val label: String) { EXERCISES("Exercises"), GENERATE("Generate"), DRILLS("Drills") }
+
 @Composable
 fun VlsmScreen(vm: AppViewModel, onBack: () -> Unit) {
+    var tab by rememberSaveable { mutableStateOf(VlsmTab.EXERCISES) }
+    ScreenScaffold(title = "VLSM practice", onBack = onBack) {
+        Column(Modifier.fillMaxSize().imePadding().verticalScroll(rememberScrollState())) {
+            ContentWidth(Modifier.padding(vertical = 12.dp)) {
+                Segmented(VlsmTab.entries, tab, { it.label }, { tab = it })
+                when (tab) {
+                    VlsmTab.EXERCISES -> VlsmExercises(vm)
+                    VlsmTab.GENERATE -> VlsmGenerate(vm)
+                    VlsmTab.DRILLS -> VlsmDrill(vm)
+                }
+                Spacer(Modifier.height(8.dp))
+            }
+        }
+    }
+}
+
+/** The 1.0 VLSM screen: the site's six exercises. */
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@Composable
+private fun VlsmExercises(vm: AppViewModel) {
     val exercises = vm.snapshot.data.vlsm
     var selected by rememberSaveable { mutableIntStateOf(0) }
     if (selected !in exercises.indices) selected = 0
@@ -208,86 +251,79 @@ fun VlsmScreen(vm: AppViewModel, onBack: () -> Unit) {
     var showAnswer by rememberSaveable(selected) { mutableStateOf(false) }
     var menu by remember { mutableStateOf(false) }
 
-    ScreenScaffold(title = "VLSM practice", onBack = onBack) {
-        Column(Modifier.fillMaxSize().imePadding().verticalScroll(rememberScrollState())) {
-            ContentWidth(Modifier.padding(vertical = 12.dp)) {
-                if (exercise == null) {
-                    EmptyState(null, "No VLSM exercises", "Check for updates in Settings.")
-                    return@ContentWidth
+    if (exercise == null) {
+        EmptyState(null, "No VLSM exercises", "Check for updates in Settings.")
+        return
+    }
+    HncCard(padding = 22.dp) {
+        Eyebrow("IPv4 subnetting practice")
+        Text("Variable Length Subnet Masking", style = MaterialTheme.typography.titleLarge, modifier = Modifier.semantics { heading() })
+        Text(
+            "Give each LAN the smallest subnet that fits. Allocate largest first, starting at the base network address, " +
+                "and break ties in alphabetical order. Use conventional IPv4 subnets with network and broadcast addresses reserved.",
+            style = MaterialTheme.typography.bodyMedium,
+        )
+        ExposedDropdownMenuBox(expanded = menu, onExpandedChange = { menu = it }) {
+            OutlinedTextField(
+                value = "${selected + 1}. ${exercise.title}",
+                onValueChange = {},
+                readOnly = true,
+                label = { Text("Choose a practice question") },
+                trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(menu) },
+                modifier = Modifier.fillMaxWidth().menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable),
+            )
+            ExposedDropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
+                exercises.forEachIndexed { i, e ->
+                    DropdownMenuItem(text = { Text("${i + 1}. ${e.title}") }, onClick = { selected = i; menu = false })
                 }
-                HncCard(padding = 22.dp) {
-                    Eyebrow("IPv4 subnetting practice")
-                    Text("Variable Length Subnet Masking", style = MaterialTheme.typography.titleLarge, modifier = Modifier.semantics { heading() })
-                    Text(
-                        "Give each LAN the smallest subnet that fits. Allocate largest first, starting at the base network address, " +
-                            "and break ties in alphabetical order. Use conventional IPv4 subnets with network and broadcast addresses reserved.",
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                    ExposedDropdownMenuBox(expanded = menu, onExpandedChange = { menu = it }) {
-                        OutlinedTextField(
-                            value = "${selected + 1}. ${exercise.title}",
-                            onValueChange = {},
-                            readOnly = true,
-                            label = { Text("Choose a practice question") },
-                            trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(menu) },
-                            modifier = Modifier.fillMaxWidth().menuAnchor(ExposedDropdownMenuAnchorType.PrimaryNotEditable),
-                        )
-                        ExposedDropdownMenu(expanded = menu, onDismissRequest = { menu = false }) {
-                            exercises.forEachIndexed { i, e ->
-                                DropdownMenuItem(text = { Text("${i + 1}. ${e.title}") }, onClick = { selected = i; menu = false })
-                            }
-                        }
-                    }
-                    Text("Allocate subnets within ${exercise.parent}.", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
-                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                        exercise.requests.forEach { Text("• ${it.lan} needs ${it.hosts} usable addresses", style = MaterialTheme.typography.bodyLarge) }
-                    }
-                    Text(
-                        "Find each LAN’s network address and prefix, subnet mask, usable host range and broadcast address.",
-                        style = MaterialTheme.typography.bodyMedium,
-                    )
-                    OutlinedTextField(
-                        value = vm.vlsmWorking[selected].orEmpty(),
-                        onValueChange = { vm.setVlsmWorking(selected, it) },
-                        label = { Text("Your working") },
-                        placeholder = { Text("Start by ordering the LANs by host count, then calculate each block size.") },
-                        minLines = 6,
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = ControlShape,
-                        colors = OutlinedTextFieldDefaults.colors(
-                            unfocusedContainerColor = LocalHncColors.current.card,
-                            focusedContainerColor = LocalHncColors.current.card,
-                        ),
-                    )
-                    if (hintsShown > 0) {
-                        Column(
-                            verticalArrangement = Arrangement.spacedBy(6.dp),
-                            modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
-                        ) {
-                            exercise.hints.take(hintsShown).forEachIndexed { i, h ->
-                                Text("${i + 1}. $h", style = MaterialTheme.typography.bodyMedium)
-                            }
-                        }
-                    }
-                    val total = exercise.hints.size
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        PlainButton(
-                            if (hintsShown >= total) "All $total hints shown" else "Show hint (${hintsShown + 1} of $total)",
-                            { hintsShown++ },
-                            enabled = hintsShown < total,
-                        )
-                        PrimaryButton(if (showAnswer) "Hide answer" else "Reveal answer", { showAnswer = !showAnswer })
-                    }
-                }
-                if (showAnswer) Solution(exercise)
-                Spacer(Modifier.height(8.dp))
             }
         }
+        Text("Allocate subnets within ${exercise.parent}.", style = MaterialTheme.typography.bodyLarge, fontWeight = FontWeight.SemiBold)
+        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            exercise.requests.forEach { Text("• ${it.lan} needs ${it.hosts} usable addresses", style = MaterialTheme.typography.bodyLarge) }
+        }
+        Text(
+            "Find each LAN’s network address and prefix, subnet mask, usable host range and broadcast address.",
+            style = MaterialTheme.typography.bodyMedium,
+        )
+        OutlinedTextField(
+            value = vm.vlsmWorking[selected].orEmpty(),
+            onValueChange = { vm.setVlsmWorking(selected, it) },
+            label = { Text("Your working") },
+            placeholder = { Text("Start by ordering the LANs by host count, then calculate each block size.") },
+            minLines = 6,
+            modifier = Modifier.fillMaxWidth(),
+            shape = ControlShape,
+            colors = OutlinedTextFieldDefaults.colors(
+                unfocusedContainerColor = LocalHncColors.current.card,
+                focusedContainerColor = LocalHncColors.current.card,
+            ),
+        )
+        if (hintsShown > 0) {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+                modifier = Modifier.semantics { liveRegion = LiveRegionMode.Polite },
+            ) {
+                exercise.hints.take(hintsShown).forEachIndexed { i, h ->
+                    Text("${i + 1}. $h", style = MaterialTheme.typography.bodyMedium)
+                }
+            }
+        }
+        val total = exercise.hints.size
+        FlowRow(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            PlainButton(
+                if (hintsShown >= total) "All $total hints shown" else "Show hint (${hintsShown + 1} of $total)",
+                { hintsShown++ },
+                enabled = hintsShown < total,
+            )
+            PrimaryButton(if (showAnswer) "Hide answer" else "Reveal answer", { showAnswer = !showAnswer })
+        }
     }
+    if (showAnswer) Solution(exercise)
 }
 
 @Composable
-private fun Solution(exercise: VlsmExercise) {
+internal fun Solution(exercise: VlsmExercise) {
     HncCard(padding = 22.dp) {
         Text("Worked solution", style = MaterialTheme.typography.titleMedium, modifier = Modifier.semantics { heading() })
         exercise.rows.forEachIndexed { i, r ->
@@ -350,7 +386,10 @@ fun SettingsScreen(vm: AppViewModel, onBack: () -> Unit) {
     ScreenScaffold(title = "Settings", onBack = onBack) {
         Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
             ContentWidth(Modifier.padding(vertical = 12.dp)) {
-                Eyebrow("Accessibility", Modifier.semantics { heading() })
+                Eyebrow("Reminder", Modifier.semantics { heading() })
+                ReminderSettingsCard(vm)
+
+                Eyebrow("Accessibility", Modifier.padding(top = 8.dp).semantics { heading() })
                 HncCard(padding = 0.dp) {
                     Column {
                         SwitchRow(
@@ -374,6 +413,13 @@ fun SettingsScreen(vm: AppViewModel, onBack: () -> Unit) {
                         "${s.data.units.size} units · ${s.totalCards} flashcards · ${s.totalQuestions} quiz questions",
                         style = MaterialTheme.typography.bodyMedium,
                     )
+                    s.lastChange?.let { c ->
+                        Muted(
+                            "Last change: ${c.added} added, ${c.updated} updated" +
+                                (if (c.questionsChanged > 0) ", ${c.questionsChanged} quiz ${if (c.questionsChanged == 1) "question" else "questions"} changed" else "") +
+                                " · ${formatDay(c.date)}",
+                        )
+                    }
                     Row(verticalAlignment = Alignment.CenterVertically) {
                         PlainButton("Check for updates", { vm.refresh(manual = true) }, enabled = !vm.refreshing)
                         if (vm.refreshing) {
@@ -394,7 +440,7 @@ fun SettingsScreen(vm: AppViewModel, onBack: () -> Unit) {
                 Eyebrow("Progress", Modifier.padding(top = 8.dp).semantics { heading() })
                 HncCard {
                     Text(
-                        "Ratings, quiz answers and VLSM working are saved on this device only.",
+                        "Ratings, review schedules, quiz answers, stars, notes and VLSM working are saved on this device only.",
                         style = MaterialTheme.typography.bodyMedium,
                     )
                     PlainButton("Reset saved progress", { confirmReset = true })
@@ -414,19 +460,138 @@ fun SettingsScreen(vm: AppViewModel, onBack: () -> Unit) {
         }
     }
     if (confirmReset) {
+        var alsoStars by rememberSaveable { mutableStateOf(false) }
         AlertDialog(
             onDismissRequest = { confirmReset = false },
             title = { Text("Reset saved progress?") },
             text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(
+                        "Clear all flashcard ratings and saved quiz answers? This resets ${s.totalCards} flashcards and " +
+                            "${s.totalQuestions} quiz questions on this device.",
+                    )
+                    Row(
+                        Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 48.dp)
+                            .toggleable(value = alsoStars, role = Role.Checkbox) { alsoStars = it },
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Checkbox(checked = alsoStars, onCheckedChange = null)
+                        Spacer(Modifier.width(8.dp))
+                        Text("Also delete stars and notes")
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(onClick = { vm.resetProgress(alsoStars); confirmReset = false }) { Text("Reset") }
+            },
+            dismissButton = { TextButton(onClick = { confirmReset = false }) { Text("Cancel") } },
+        )
+    }
+}
+
+/**
+ * Daily reminder toggle and time. Turning it on asks for notification permission on Android 13+;
+ * if that's refused (or notifications are blocked) the toggle turns back off with a way into
+ * system settings.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ReminderSettingsCard(vm: AppViewModel) {
+    val context = LocalContext.current
+    val reminder = vm.reminder
+    var showDenied by rememberSaveable { mutableStateOf(false) }
+    var pickTime by rememberSaveable { mutableStateOf(false) }
+    val permission = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        if (granted && Reminders.canNotify(context)) {
+            vm.updateReminder(vm.reminder.copy(enabled = true))
+        } else {
+            vm.updateReminder(vm.reminder.copy(enabled = false))
+            showDenied = true
+        }
+    }
+    val turnOn = {
+        when {
+            Reminders.canNotify(context) -> vm.updateReminder(reminder.copy(enabled = true))
+            Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
+                ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED ->
+                permission.launch(Manifest.permission.POST_NOTIFICATIONS)
+            else -> showDenied = true // Notifications blocked in system settings.
+        }
+    }
+    HncCard(padding = 0.dp) {
+        Column {
+            SwitchRow(
+                "Daily reminder",
+                "A notification at ${reminder.label} with how many cards are due and your streak.",
+                reminder.enabled,
+            ) { on -> if (on) turnOn() else vm.updateReminder(reminder.copy(enabled = false)) }
+            if (reminder.enabled) {
+                Divider()
+                ListItem(
+                    headlineContent = { Text("Reminder time", fontWeight = FontWeight.SemiBold) },
+                    trailingContent = { Text(reminder.label, style = MaterialTheme.typography.titleMedium) },
+                    colors = ListItemDefaults.colors(containerColor = LocalHncColors.current.card),
+                    modifier = Modifier
+                        .clickable(role = Role.Button, onClickLabel = "Change reminder time") { pickTime = true }
+                        .heightIn(min = 56.dp),
+                )
+                if (!Reminders.canNotify(context)) {
+                    Muted(
+                        "Notifications are turned off for HNC Revision in system settings.",
+                        Modifier.padding(horizontal = 18.dp, vertical = 8.dp),
+                    )
+                }
+            }
+        }
+    }
+    if (pickTime) {
+        val state = rememberTimePickerState(initialHour = reminder.hour, initialMinute = reminder.minute, is24Hour = true)
+        AlertDialog(
+            onDismissRequest = { pickTime = false },
+            title = { Text("Reminder time") },
+            text = { TimePicker(state = state) },
+            confirmButton = {
+                TextButton(onClick = {
+                    vm.updateReminder(reminder.copy(hour = state.hour, minute = state.minute))
+                    pickTime = false
+                }) { Text("Save") }
+            },
+            dismissButton = { TextButton(onClick = { pickTime = false }) { Text("Cancel") } },
+        )
+    }
+    if (showDenied) {
+        AlertDialog(
+            onDismissRequest = { showDenied = false },
+            title = { Text("Notifications are off") },
+            text = {
                 Text(
-                    "Clear all flashcard ratings and saved quiz answers? This resets ${s.totalCards} flashcards and " +
-                        "${s.totalQuestions} quiz questions on this device.",
+                    "HNC Revision needs permission to send notifications for the daily reminder. " +
+                        "You can allow notifications in system settings, then turn the reminder on again.",
                 )
             },
             confirmButton = {
-                TextButton(onClick = { vm.resetProgress(); confirmReset = false }) { Text("Reset") }
+                TextButton(onClick = {
+                    showDenied = false
+                    openNotificationSettings(context)
+                }) { Text("Open settings") }
             },
-            dismissButton = { TextButton(onClick = { confirmReset = false }) { Text("Cancel") } },
+            dismissButton = { TextButton(onClick = { showDenied = false }) { Text("Not now") } },
+        )
+    }
+}
+
+private fun openNotificationSettings(context: Context) {
+    val intent = Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+        .putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName)
+        .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+    try {
+        context.startActivity(intent)
+    } catch (_: ActivityNotFoundException) {
+        context.startActivity(
+            Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, "package:${context.packageName}".toUri())
+                .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
         )
     }
 }
